@@ -1,0 +1,11 @@
+/target
+^target/
+target
+
+dist/
+node_modules/
+.swc/
+
+.DS_Store
+
+*.log
