@@ -98,34 +98,33 @@ const __app_components = global.__modules.import("@app/components");
 const __app_hooks = global.__modules.import("@app/hooks");
 const __app_module_d = global.__modules.import("@app/module_d");
 const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
-const app = global.__modules.importWildcard("@app/core");
-const __re_export_all = global.__modules.importWildcard("@app/module_a");
-const __re_export_all1 = global.__modules.importWildcard("@app/module_b");
-const __re_export = global.__modules.importWildcard("@app/module_c");
-
 const React = _react.default;
 const useState = _react.useState;
 const Container = __app_components.Container;
 const useCustomHook = __app_hooks.useCustomHook;
-const driver = __app_module_d.driver;
-
+const app = global.__modules.importWildcard("@app/core");
+const __re_export_all = global.__modules.importWildcard("@app/module_a");
+const __re_export_all1 = global.__modules.importWildcard("@app/module_b");
+const __re_export = global.__modules.importWildcard("@app/module_c");
+const __re_export1 = __app_module_d.driver;
 function MyComponent() {
-  // ...
+    const [count, setCount] = useState(0);
+    useCustomHook(app);
+    return /*#__PURE__*/ React.createElement(Container, null, count);
 }
-
-const __export_default = class {};
-
+class __Class {
+}
 global.__modules.init("demo.tsx");
 global.__modules.export("demo.tsx", {
-  MyComponent,
-  AppCore: app,
-  default: __export_default,
-  car: __re_export,
-  driverModule: driver
+    MyComponent,
+    AppCore: app,
+    default: __Class,
+    car: __re_export,
+    driverModule: __re_export1
 });
 global.__modules.exportAll("demo.tsx", {
-  ...__re_export_all,
-  ...__re_export_all1
+    ...__re_export_all,
+    ...__re_export_all1
 });
 ```
 
