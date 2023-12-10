@@ -115,24 +115,29 @@ impl EsModuleCollector {
     /// `export default ident` to
     /// ```js
     /// // runtime_module: true
-    /// const __export_default = ident;
+    /// const __export_default = expr;
     ///
     /// // runtime_module: false
-    /// const __export_default = ident;
-    /// export default __export_default;
+    /// export default __export_default = expr;
     /// ```
     fn collect_and_convert_export_default_expr(
         &mut self,
         export_default_expr: &mut ExportDefaultExpr,
-    ) -> Stmt {
+    ) -> Option<Stmt> {
         debug!("export default expr {:#?}", export_default_expr);
         let ident = private_ident!("__export_default");
+        let orig_expr = export_default_expr.expr.clone();
         self.exports.push(ExportModule::default(ident.clone()));
-        export_default_expr
-            .expr
-            .clone()
-            .into_var_decl(VarDeclKind::Const, ident.clone().into())
-            .into()
+        if self.runtime_module {
+            Some(
+                orig_expr
+                    .into_var_decl(VarDeclKind::Const, ident.into())
+                    .into(),
+            )
+        } else {
+            *export_default_expr.expr = orig_expr.make_assign_to(AssignOp::Assign, ident.into());
+            None
+        }
     }
 
     /// Collect `ExportModule` default export with declare statements.
@@ -298,9 +303,11 @@ impl VisitMut for EsModuleCollector {
                         module_decl.visit_mut_children_with(self);
                     }
                     ModuleDecl::ExportDefaultExpr(export_default_expr) => {
-                        *stmt = self
-                            .collect_and_convert_export_default_expr(export_default_expr)
-                            .into();
+                        if let Some(converted_stmt) =
+                            self.collect_and_convert_export_default_expr(export_default_expr)
+                        {
+                            *stmt = converted_stmt.into();
+                        }
                     }
                     ModuleDecl::ExportDefaultDecl(export_default_decl) => {
                         if let Some(converted_stmt) =
