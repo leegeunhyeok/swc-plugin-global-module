@@ -75,7 +75,7 @@ impl GlobalModuleTransformer {
     }
 
     /// Returns a cached module ident.
-    fn get_module_ident(&mut self, module_src: &String) -> &Ident {
+    fn get_esm_ident(&mut self, module_src: &String) -> &Ident {
         let module_path = self.to_actual_path(module_src.to_string());
         self.import_idents
             .entry(module_path)
@@ -91,7 +91,7 @@ impl GlobalModuleTransformer {
     /// eg. `import ident from "module_src"`
     fn create_default_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_module_ident(&module_src);
+            let module_ident = self.get_esm_ident(&module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(module_ident.clone().into(), quote_ident!("default")),
@@ -123,7 +123,7 @@ impl GlobalModuleTransformer {
         imported: &Option<Ident>,
     ) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_module_ident(&module_src);
+            let module_ident = self.get_esm_ident(&module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(
@@ -158,7 +158,7 @@ impl GlobalModuleTransformer {
     /// eg. `import * as ident from "module_src"`
     fn create_namespace_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_module_ident(&module_src);
+            let module_ident = self.get_esm_ident(&module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 Expr::Call(CallExpr {
