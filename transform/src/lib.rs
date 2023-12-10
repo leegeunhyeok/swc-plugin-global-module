@@ -1,18 +1,19 @@
 mod constants;
 mod module_collector_esm;
+mod module_mapper;
 mod utils;
 
 use constants::{
     ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME, MODULE_REGISTRY_NAME,
 };
 use module_collector_esm::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
-use regex::Regex;
-use std::collections::{BTreeMap, HashMap};
+use module_mapper::ModuleMapper;
+use std::collections::HashMap;
 use swc_core::{
     common::DUMMY_SP,
     ecma::{
         ast::*,
-        utils::{private_ident, quote_ident, ExprFactory},
+        utils::{quote_ident, ExprFactory},
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
@@ -21,9 +22,7 @@ use utils::{decl_var_and_assign_stmt, obj_lit, obj_member_expr};
 pub struct GlobalModuleTransformer {
     module_name: String,
     runtime_module: bool,
-    import_paths: Option<HashMap<String, String>>,
-    import_idents: BTreeMap<String, Ident>,
-    normalize_regex: Regex,
+    module_mapper: ModuleMapper,
 }
 
 impl GlobalModuleTransformer {
@@ -35,22 +34,8 @@ impl GlobalModuleTransformer {
         GlobalModuleTransformer {
             module_name,
             runtime_module,
-            import_paths,
-            import_idents: BTreeMap::new(),
-            normalize_regex: Regex::new(r"[^a-zA-Z0-9]").unwrap(),
+            module_mapper: ModuleMapper::new(import_paths),
         }
-    }
-
-    /// Find actual module path from `import_paths`
-    fn to_actual_path(&self, module_src: String) -> String {
-        if let Some(actual_path) = self
-            .import_paths
-            .as_ref()
-            .and_then(|import_paths| import_paths.get(&module_src))
-        {
-            return actual_path.clone();
-        }
-        module_src
     }
 
     /// Returns an statement that import module from global and assign it.
@@ -74,24 +59,13 @@ impl GlobalModuleTransformer {
         )
     }
 
-    /// Returns a cached module ident.
-    fn get_esm_ident(&mut self, module_src: &String) -> &Ident {
-        let module_path = self.to_actual_path(module_src.to_string());
-        self.import_idents
-            .entry(module_path)
-            .or_insert(private_ident!(self
-                .normalize_regex
-                .replace_all(format!("_{module_src}").as_str(), "_")
-                .to_string()))
-    }
-
     /// Create unique module identifier and returns a statement that import default value from global.
     ///
     /// eg. `const ident = {module_ident}.default`
     /// eg. `import ident from "module_src"`
     fn create_default_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_esm_ident(&module_src);
+            let module_ident = self.module_mapper.register_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(module_ident.clone().into(), quote_ident!("default")),
@@ -123,7 +97,7 @@ impl GlobalModuleTransformer {
         imported: &Option<Ident>,
     ) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_esm_ident(&module_src);
+            let module_ident = self.module_mapper.register_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(
@@ -158,7 +132,7 @@ impl GlobalModuleTransformer {
     /// eg. `import * as ident from "module_src"`
     fn create_namespace_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.get_esm_ident(&module_src);
+            let module_ident = self.module_mapper.register_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 Expr::Call(CallExpr {
@@ -219,7 +193,8 @@ impl GlobalModuleTransformer {
 
         if self.runtime_module {
             let mut import_ident_stmts = self
-                .import_idents
+                .module_mapper
+                .registered_idents
                 .iter()
                 .map(|(src, ident)| self.get_global_import_stmt(ident, src).into())
                 .collect::<Vec<ModuleItem>>();
