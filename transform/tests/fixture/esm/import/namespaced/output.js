@@ -1,2 +1,3 @@
-const ReactAll = global.__modules.importWildcard("react");
-global.__modules.reset("test.js");
+const _react = global.__modules.registry["react"];
+const ReactAll = global.__modules.helpers.asWildcard(_react);
+global.__modules.esm("test.js", {});

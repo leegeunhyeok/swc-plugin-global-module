@@ -3,9 +3,7 @@ mod module_collector_esm;
 mod utils;
 
 use constants::{
-    GLOBAL, MODULE, MODULE_EXPORT_ALL_METHOD_NAME, MODULE_EXPORT_METHOD_NAME,
-    MODULE_IMPORT_METHOD_NAME, MODULE_IMPORT_WILDCARD_METHOD_NAME, MODULE_INIT_METHOD_NAME,
-    MODULE_RESET_METHOD_NAME,
+    ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME, MODULE_REGISTRY_NAME,
 };
 use module_collector_esm::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
 use regex::Regex;
@@ -18,7 +16,7 @@ use swc_core::{
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
-use utils::{decl_var_and_assign_stmt, global_module_api_call_expr, obj_lit, obj_member_expr};
+use utils::{decl_var_and_assign_stmt, obj_lit, obj_member_expr};
 
 pub struct GlobalModuleTransformer {
     module_name: String,
@@ -57,21 +55,30 @@ impl GlobalModuleTransformer {
 
     /// Returns an statement that import module from global and assign it.
     ///
-    /// eg. `const __mod = global.__modules.import(module_src)`
-    fn get_global_import_stmt(&self, ident: &Ident, module_src: &str) -> Stmt {
+    /// eg. `const __mod = global.__modules.registry[module_id]`
+    fn get_global_import_stmt(&self, ident: &Ident, module_id: &str) -> Stmt {
         decl_var_and_assign_stmt(
             ident,
-            global_module_api_call_expr(
-                MODULE_IMPORT_METHOD_NAME,
-                vec![self.to_actual_path(String::from(module_src)).as_arg()],
-            ),
+            Expr::Member(MemberExpr {
+                span: DUMMY_SP,
+                obj: obj_member_expr(
+                    obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+                    quote_ident!(MODULE_REGISTRY_NAME),
+                )
+                .into(),
+                prop: MemberProp::Computed(ComputedPropName {
+                    span: DUMMY_SP,
+                    expr: Box::new(Expr::Lit(Lit::Str(Str::from(module_id)))),
+                }),
+            }),
         )
     }
 
     /// Returns a cached module ident.
     fn get_module_ident(&mut self, module_src: &String) -> &Ident {
+        let module_path = self.to_actual_path(module_src.to_string());
         self.import_idents
-            .entry(module_src.clone())
+            .entry(module_path)
             .or_insert(private_ident!(self
                 .normalize_regex
                 .replace_all(format!("_{module_src}").as_str(), "_")
@@ -147,16 +154,28 @@ impl GlobalModuleTransformer {
 
     /// Create unique module identifier and returns a statement that import namespaced value from global.
     ///
-    /// eg. `const ident = global.__modules.importAll(module_src)`
+    /// eg. `const ident = global.__modules.helpers.asWildcard(module_ident)`
     /// eg. `import * as ident from "module_src"`
     fn create_namespace_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
+            let module_ident = self.get_module_ident(&module_src);
             decl_var_and_assign_stmt(
                 &ident,
-                global_module_api_call_expr(
-                    MODULE_IMPORT_WILDCARD_METHOD_NAME,
-                    vec![Str::from(self.to_actual_path(module_src.clone())).as_arg()],
-                ),
+                Expr::Call(CallExpr {
+                    span: DUMMY_SP,
+                    type_args: None,
+                    callee: Callee::Expr(Box::new(obj_member_expr(
+                        obj_member_expr(
+                            obj_member_expr(
+                                quote_ident!(GLOBAL).into(),
+                                quote_ident!(MODULE).into(),
+                            ),
+                            quote_ident!(MODULE_HELPER_NAME),
+                        ),
+                        quote_ident!(HELPER_AS_WILDCARD_NAME),
+                    ))),
+                    args: vec![module_ident.clone().as_arg()],
+                }),
             )
             .into()
         } else {
@@ -173,36 +192,6 @@ impl GlobalModuleTransformer {
             })
             .into()
         }
-    }
-
-    /// Returns a statement that initialize the global module.
-    ///
-    /// eg. `global.__modules.init(module_name)`
-    fn get_init_global_export_stmt(&mut self) -> Stmt {
-        Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: obj_member_expr(
-                obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE)),
-                quote_ident!(MODULE_INIT_METHOD_NAME),
-            )
-            .as_call(DUMMY_SP, vec![Str::from(self.module_name.clone()).as_arg()])
-            .into(),
-        })
-    }
-
-    /// Returns a statement that reset the global module.
-    ///
-    /// eg. `global.__modules.reset(module_name)`
-    fn get_reset_global_export_stmt(&mut self) -> Stmt {
-        Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: obj_member_expr(
-                obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE)),
-                quote_ident!(MODULE_RESET_METHOD_NAME),
-            )
-            .as_call(DUMMY_SP, vec![Str::from(self.module_name.clone()).as_arg()])
-            .into(),
-        })
     }
 
     fn convert_esm_import(&mut self, imports: &Vec<ImportModule>) -> Vec<ModuleItem> {
@@ -244,82 +233,63 @@ impl GlobalModuleTransformer {
 
     fn convert_esm_export(&mut self, exports: &Vec<ExportModule>) -> Vec<ModuleItem> {
         let mut stmts = Vec::with_capacity(exports.len());
-        if exports.is_empty() {
-            stmts.push(self.get_reset_global_export_stmt().into());
-        } else {
-            let mut export_props = Vec::new();
-            let mut export_all_props = Vec::new();
-            exports.into_iter().for_each(
-                |ExportModule {
-                     ident,
-                     as_ident,
-                     module_type,
-                 }| {
-                    match module_type {
-                        ModuleType::Default | ModuleType::DefaultAsNamed => {
-                            export_props.push(
+        let mut export_props = Vec::new();
+        let mut export_all_props = Vec::new();
+
+        exports.into_iter().for_each(
+            |ExportModule {
+                 ident,
+                 as_ident,
+                 module_type,
+             }| {
+                match module_type {
+                    ModuleType::Default | ModuleType::DefaultAsNamed => {
+                        export_props.push(
+                            Prop::KeyValue(KeyValueProp {
+                                key: quote_ident!("default").into(),
+                                value: ident.clone().into(),
+                            })
+                            .into(),
+                        );
+                    }
+                    ModuleType::Named => {
+                        export_props.push(
+                            if let Some(renamed_ident) =
+                                as_ident.as_ref().filter(|&id| id.sym != ident.sym)
+                            {
                                 Prop::KeyValue(KeyValueProp {
-                                    key: quote_ident!("default").into(),
+                                    key: quote_ident!(renamed_ident.sym.as_str()).into(),
                                     value: ident.clone().into(),
                                 })
-                                .into(),
-                            );
-                        }
-                        ModuleType::Named => {
-                            export_props.push(
-                                if let Some(renamed_ident) =
-                                    as_ident.as_ref().filter(|&id| id.sym != ident.sym)
-                                {
-                                    Prop::KeyValue(KeyValueProp {
-                                        key: quote_ident!(renamed_ident.sym.as_str()).into(),
-                                        value: ident.clone().into(),
-                                    })
-                                    .into()
-                                } else {
-                                    Prop::Shorthand(ident.clone()).into()
-                                },
-                            );
-                        }
-                        ModuleType::NamespaceOrAll => export_all_props.push(
-                            SpreadElement {
-                                dot3_token: DUMMY_SP,
-                                expr: ident.clone().into(),
-                            }
-                            .into(),
-                        ),
+                                .into()
+                            } else {
+                                Prop::Shorthand(ident.clone()).into()
+                            },
+                        );
                     }
-                },
-            );
-            stmts.push(self.get_init_global_export_stmt().into());
+                    ModuleType::NamespaceOrAll => export_all_props.push(ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Ident(ident.clone())),
+                    }),
+                }
+            },
+        );
 
-            if !export_props.is_empty() {
-                stmts.push(
-                    global_module_api_call_expr(
-                        MODULE_EXPORT_METHOD_NAME,
-                        vec![
-                            self.module_name.as_str().as_arg(),
-                            obj_lit(Some(export_props)).as_arg(),
-                        ],
-                    )
-                    .into_stmt()
-                    .into(),
-                );
-            }
+        let mut args = vec![
+            self.module_name.as_str().as_arg(),
+            obj_lit(Some(export_props)).as_arg(),
+        ];
+        args.extend(export_all_props);
+        stmts.push(
+            obj_member_expr(
+                obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+                quote_ident!(ESM_API_NAME),
+            )
+            .as_call(DUMMY_SP, args)
+            .into_stmt()
+            .into(),
+        );
 
-            if !export_all_props.is_empty() {
-                stmts.push(
-                    global_module_api_call_expr(
-                        MODULE_EXPORT_ALL_METHOD_NAME,
-                        vec![
-                            self.module_name.as_str().as_arg(),
-                            obj_lit(Some(export_all_props)).as_arg(),
-                        ],
-                    )
-                    .into_stmt()
-                    .into(),
-                );
-            }
-        }
         stmts
     }
 }

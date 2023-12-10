@@ -1,1 +1,2 @@
-export * from 'module';
+export * from 'a';
+export * from 'b';

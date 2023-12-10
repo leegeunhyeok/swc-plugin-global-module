@@ -1,5 +1,4 @@
 export default function fn() {}
-global.__modules.init("test.js");
-global.__modules.export("test.js", {
+global.__modules.esm("test.js", {
   default: fn
 });

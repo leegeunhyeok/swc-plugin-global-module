@@ -1,5 +1,4 @@
 class ClassDecl {}
-global.__modules.init("test.js");
-global.__modules.export("test.js", {
+global.__modules.esm("test.js", {
   default: ClassDecl
 });

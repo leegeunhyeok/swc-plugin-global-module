@@ -11,8 +11,7 @@ export default class __Class {
   }
 }
 export { app, useCustomHook };
-global.__modules.init("test.js");
-global.__modules.export("test.js", {
+global.__modules.esm("test.js", {
   MyComponent,
   default: __Class,
   app,

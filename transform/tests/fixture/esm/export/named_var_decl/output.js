@@ -1,3 +1,2 @@
 const named = new Instance();
-global.__modules.init("test.js");
-global.__modules.export("test.js", { named });
+global.__modules.esm("test.js", { named });

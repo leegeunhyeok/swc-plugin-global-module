@@ -29,15 +29,17 @@ export * as car from '@app/module_c';
 export { driver as driverModule } from '@app/module_d';
 `;
 
-const generateModulePath = () => {
+const generateModuleId = () => {
   return path.join(faker.system.directoryPath(), faker.word.noun() + '.js');
 };
 
 describe('swc-plugin-global-module/runtime', () => {
   const snapshot = process.env.CI === 'true' ? it.skip : it;
 
-  beforeEach(() => {
-    global.__modules.reset();
+  it('global object must expose apis', () => {
+    expect(typeof global.__modules === 'object').toEqual(true);
+    expect(typeof global.__modules.esm === 'function').toEqual(true);
+    expect(typeof global.__modules.helpers === 'object').toEqual(true);
   });
 
   snapshot('match snapshot', async () => {
@@ -66,218 +68,103 @@ describe('swc-plugin-global-module/runtime', () => {
     expect(outputCode).toMatchSnapshot();
   });
 
-  it('global object must have `__modules` exposed', () => {
-    expect(typeof global.__modules === 'object').toEqual(true);
-  });
-
-  describe('initialize modules', () => {
-    let modulePath: string;
+  describe('esm', () => {
+    let moduleId: string;
 
     beforeEach(() => {
-      modulePath = path.join(faker.system.directoryPath(), faker.word.noun() + '.js');
+      moduleId = generateModuleId();
     });
 
-    describe('when call `export()` before `init()`', () => {
-      it('should throw error', () => {
-        expect(() => global.__modules.export(modulePath, {})).toThrow(Error);
-      });
-    });
-
-    describe('when call `export()` after `init()`', () => {
-      it('should not throw error', () => {
-        global.__modules.init(modulePath);
-        expect(() => global.__modules.export(modulePath, {})).not.toThrow();
-      });
-    });
-  });
-
-  describe('reset modules', () => {
-    let modules: string[];
-
-    beforeEach(() => {
-      modules = [
-        generateModulePath(),
-        generateModulePath(),
-        generateModulePath(),
-        generateModulePath(),
-        generateModulePath(),
-      ];
-
-      // Register dummy exports
-      modules.forEach((modulePath) => {
-        global.__modules.init(modulePath);
-        global.__modules.export(modulePath, {});
-      });
-    });
-
-    describe('when call `reset()` with module name argument', () => {
-      let targetModule: string;
-
-      beforeEach(() => {
-        targetModule = faker.helpers.arrayElement(modules);
-        global.__modules.reset(targetModule);
-      });
-
-      describe('when call `import()` the reset module', () => {
-        it('should reset specified module only', () => {
-          expect(() => global.__modules.import(targetModule)).toThrow(Error);
-          modules
-            .filter((modulePath) => modulePath !== targetModule)
-            .forEach((modulePath) => {
-              expect(() => global.__modules.import(modulePath)).not.toThrow();
-            });
-        });
-      });
-    });
-
-    describe('when call `reset()` without any arguments', () => {
-      beforeEach(() => {
-        global.__modules.reset();
-      });
-
-      describe('when call `import()` the all of reset modules', () => {
-        it('should reset all modules', () => {
-          modules.forEach((modulePath) => {
-            expect(() => global.__modules.import(modulePath)).toThrow(Error);
-          });
-        });
-      });
-    });
-  });
-
-  describe('export & import modules', () => {
-    let modulePath: string;
-
-    beforeEach(() => {
-      modulePath = generateModulePath();
-    });
-
-    describe('when call `import()` with unexported module', () => {
+    describe('when trying to get unregistered module', () => {
       it('should throw error', () => {
         expect(() => global.__modules.import(faker.string.alpha())).toThrow(Error);
       });
     });
 
-    describe('when call `export()` with invalid arguments', () => {
-      beforeEach(() => {
-        global.__modules.init(modulePath);
-      });
-
-      describe('when `exports` is invalid', () => {
-        let invalidExports: any;
-
-        beforeEach(() => {
-          invalidExports = faker.helpers.arrayElement([
-            null,
-            undefined,
-            faker.number.int(),
-            faker.string.alphanumeric(),
-          ]);
-        });
-
-        it('should throw error', () => {
-          expect(() => global.__modules.export(modulePath, invalidExports)).toThrow(Error);
-        });
-      });
-    });
-
-    describe('when call `exportAll()` with invalid arguments', () => {
-      beforeEach(() => {
-        global.__modules.init(modulePath);
-      });
-
-      describe('when `exports` is invalid', () => {
-        let invalidExports: any;
-
-        beforeEach(() => {
-          invalidExports = faker.helpers.arrayElement([
-            null,
-            undefined,
-            faker.number.int(),
-            faker.string.alphanumeric(),
-          ]);
-        });
-
-        it('should throw error', () => {
-          expect(() => global.__modules.exportAll(modulePath, invalidExports)).toThrow(Error);
-        });
-      });
-    });
-
-    describe('when call `export()` with valid exports object', () => {
-      let exportKey: string;
+    describe('register modules', () => {
       let exportValue: string;
       let exports: Record<string, unknown>;
 
-      beforeEach(() => {
-        exportKey = faker.string.alpha(10);
-        exportValue = faker.string.uuid();
-        exports = { [exportKey]: exportValue };
-        global.__modules.init(modulePath);
-        global.__modules.export(modulePath, exports);
-      });
+      describe('module that named export only', () => {
+        let namedExportKey: string;
 
-      describe('when call `import()` with the exported module', () => {
-        it('should match the exported module', () => {
-          const exportedModule = global.__modules.import(modulePath);
-          expect(exportedModule[exportKey]).toEqual(exportValue);
+        beforeEach(() => {
+          namedExportKey = faker.string.alpha(10);
+          exportValue = faker.string.uuid();
+          exports = { [namedExportKey]: exportValue };
+          global.__modules.esm(moduleId, exports);
         });
-      });
-    });
-
-    describe('when call `export()` with valid exports object that has `default` property', () => {
-      let exportValue: string;
-      let exports: Record<string, unknown>;
-
-      beforeEach(() => {
-        exportValue = faker.string.uuid();
-        exports = { default: exportValue };
-        global.__modules.init(modulePath);
-        global.__modules.export(modulePath, exports);
-      });
-
-      describe('when call `importWildcard()` with the exported module', () => {
-        it('should exclude `default` property', () => {
-          const exportedModule = global.__modules.importWildcard(modulePath);
-          expect(exports.default).toEqual(exportValue);
-          expect(exportedModule.default).toBeUndefined();
-        });
-      });
-    });
-
-    describe('when call `exportAll()` with valid argument', () => {
-      let exportKey: string;
-      let exportValue: string;
-      let exportAll: Record<string, unknown>;
-
-      beforeEach(() => {
-        exportKey = faker.string.alpha(10);
-        exportValue = faker.string.uuid();
-        exportAll = { [exportKey]: exportValue };
-        global.__modules.init(modulePath);
-        global.__modules.exportAll(modulePath, exportAll);
-      });
-
-      describe('when call `import()` with the exported module', () => {
-        it('should match the exported module', () => {
-          const exportedModule = global.__modules.import(modulePath);
-          expect(exportedModule[exportKey]).toEqual(exportValue);
+  
+        describe('when trying to get registered module', () => {
+          it('should returns exported module', () => {
+            const exportedModule = global.__modules.registry[moduleId];
+            expect(exportedModule[namedExportKey]).toEqual(exportValue);
+          });
         });
       });
 
-      describe('when `exportAll` object contains `default` property', () => {
+      describe('module that has default export', () => {
+        const EXPORT_KEY = 'default';
+
         beforeEach(() => {
           exportValue = faker.string.uuid();
-          exportAll = { default: exportValue };
-          global.__modules.init(modulePath);
-          global.__modules.exportAll(modulePath, exportAll);
+          exports = { [EXPORT_KEY]: exportValue };
+          global.__modules.esm(moduleId, exports);
+        });
+  
+        describe('when trying to get registered module', () => {
+          it('should returns exported module', () => {
+            const exportedModule = global.__modules.registry[moduleId];
+            expect(exportedModule[EXPORT_KEY]).toEqual(exportValue);
+          });
         });
 
-        describe('when call `import()` with the exported module', () => {
+        describe('when wrap module with `asWildcard` helper', () => {
           it('should exclude `default` property', () => {
-            const exportedModule = global.__modules.import(modulePath);
-            expect(exportAll.default).toEqual(exportValue);
-            expect(exportedModule.default).toBeUndefined();
+            const exportedModule = global.__modules.registry[moduleId];
+            const wrappedModule = global.__modules.helpers.asWildcard(exportedModule);
+            expect(wrappedModule.default).toBeUndefined();
+          });
+        });
+      });
+
+      describe('re-exports', () => {
+        let reExportModule: Record<string, unknown>;
+        let namedExportKey: string;
+  
+        beforeEach(() => {
+          namedExportKey = faker.string.alpha(10);
+          exportValue = faker.string.uuid();
+          reExportModule = { [namedExportKey]: exportValue };
+          global.__modules.esm(moduleId, {}, reExportModule);
+        });
+  
+        describe('when trying to get registered module', () => {
+          it('should returns exported module', () => {
+            const exportedModule = global.__modules.registry[moduleId];
+            expect(exportedModule[namedExportKey]).toEqual(exportValue);
+          });
+        });
+  
+        describe('when module that contains `default` property to be re-exported', () => {
+          const EXPORT_KEY = 'default';
+          let namedExportKey: string;
+
+          beforeEach(() => {
+            namedExportKey = faker.string.alpha(10);
+            exportValue = faker.string.uuid();
+            reExportModule = {
+              [EXPORT_KEY]: exportValue,
+              namedExportKey: null,
+            };
+            global.__modules.esm(moduleId, {}, reExportModule);
+          });
+  
+          describe('when call `import()` with the exported module', () => {
+            it('should exclude `default` property', () => {
+              const exportedModule = global.__modules.registry[moduleId];
+              expect(exportedModule[EXPORT_KEY]).toBeUndefined();
+            });
           });
         });
       });

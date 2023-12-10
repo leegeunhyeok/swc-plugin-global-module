@@ -1,12 +1,4 @@
-use swc_core::{
-    common::DUMMY_SP,
-    ecma::{
-        ast::*,
-        utils::{quote_ident, ExprFactory},
-    },
-};
-
-use crate::constants::{GLOBAL, MODULE};
+use swc_core::{common::DUMMY_SP, ecma::ast::*};
 
 /// Returns an object member expression.
 ///
@@ -45,17 +37,6 @@ pub fn obj_lit(props: Option<Vec<PropOrSpread>>) -> Expr {
         props: props.unwrap_or(Vec::new()),
     }
     .into()
-}
-
-/// Returns a global module api method call expression.
-///
-/// eg. `global.__modules.{method_name}(...args)`
-pub fn global_module_api_call_expr(method_name: &str, args: Vec<ExprOrSpread>) -> Expr {
-    obj_member_expr(
-        obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
-        quote_ident!(method_name),
-    )
-    .as_call(DUMMY_SP, args)
 }
 
 /// Check `ModuleDecl` is invalid.
