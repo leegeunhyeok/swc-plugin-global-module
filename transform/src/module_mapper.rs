@@ -19,7 +19,7 @@ impl ModuleMapper {
         }
     }
 
-    pub fn register_ident_by_src(&mut self, src: &String) -> &Ident {
+    pub fn get_ident_by_src(&mut self, src: &String) -> &Ident {
         let module_path = self.to_actual_path(src).unwrap_or(src.to_string());
         self.registered_idents
             .entry(module_path)
@@ -29,7 +29,7 @@ impl ModuleMapper {
                 .to_string()))
     }
 
-    fn to_actual_path(&self, src: &String) -> Option<String> {
+    pub fn to_actual_path(&self, src: &String) -> Option<String> {
         if let Some(actual_path) = self
             .import_paths
             .as_ref()

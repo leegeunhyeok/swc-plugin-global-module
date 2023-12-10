@@ -3,9 +3,7 @@ mod module_collector_esm;
 mod module_mapper;
 mod utils;
 
-use constants::{
-    ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME, MODULE_REGISTRY_NAME,
-};
+use constants::{ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME};
 use module_collector_esm::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
 use module_mapper::ModuleMapper;
 use std::collections::HashMap;
@@ -17,7 +15,7 @@ use swc_core::{
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
-use utils::{decl_var_and_assign_stmt, obj_lit, obj_member_expr};
+use utils::{decl_var_and_assign_stmt, get_module_from_global, obj_lit, obj_member_expr};
 
 pub struct GlobalModuleTransformer {
     module_name: String,
@@ -38,34 +36,13 @@ impl GlobalModuleTransformer {
         }
     }
 
-    /// Returns an statement that import module from global and assign it.
-    ///
-    /// eg. `const __mod = global.__modules.registry[module_id]`
-    fn get_global_import_stmt(&self, ident: &Ident, module_id: &str) -> Stmt {
-        decl_var_and_assign_stmt(
-            ident,
-            Expr::Member(MemberExpr {
-                span: DUMMY_SP,
-                obj: obj_member_expr(
-                    obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
-                    quote_ident!(MODULE_REGISTRY_NAME),
-                )
-                .into(),
-                prop: MemberProp::Computed(ComputedPropName {
-                    span: DUMMY_SP,
-                    expr: Box::new(Expr::Lit(Lit::Str(Str::from(module_id)))),
-                }),
-            }),
-        )
-    }
-
     /// Create unique module identifier and returns a statement that import default value from global.
     ///
     /// eg. `const ident = {module_ident}.default`
     /// eg. `import ident from "module_src"`
     fn create_default_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.module_mapper.register_ident_by_src(module_src);
+            let module_ident = self.module_mapper.get_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(module_ident.clone().into(), quote_ident!("default")),
@@ -97,7 +74,7 @@ impl GlobalModuleTransformer {
         imported: &Option<Ident>,
     ) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.module_mapper.register_ident_by_src(module_src);
+            let module_ident = self.module_mapper.get_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 obj_member_expr(
@@ -132,7 +109,7 @@ impl GlobalModuleTransformer {
     /// eg. `import * as ident from "module_src"`
     fn create_namespace_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
         if self.runtime_module {
-            let module_ident = self.module_mapper.register_ident_by_src(module_src);
+            let module_ident = self.module_mapper.get_ident_by_src(module_src);
             decl_var_and_assign_stmt(
                 &ident,
                 Expr::Call(CallExpr {
@@ -192,18 +169,16 @@ impl GlobalModuleTransformer {
         );
 
         if self.runtime_module {
-            let mut import_ident_stmts = self
-                .module_mapper
-                .registered_idents
-                .iter()
-                .map(|(src, ident)| self.get_global_import_stmt(ident, src).into())
-                .collect::<Vec<ModuleItem>>();
-
-            import_ident_stmts.extend(stmts);
-            import_ident_stmts
-        } else {
-            stmts
+            for (index, registered) in self.module_mapper.registered_idents.iter().enumerate() {
+                stmts.insert(
+                    index,
+                    decl_var_and_assign_stmt(registered.1, get_module_from_global(registered.0))
+                        .into(),
+                );
+            }
         }
+
+        stmts
     }
 
     fn convert_esm_export(&mut self, exports: &Vec<ExportModule>) -> Vec<ModuleItem> {

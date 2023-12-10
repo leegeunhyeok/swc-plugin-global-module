@@ -1,4 +1,9 @@
-use swc_core::{common::DUMMY_SP, ecma::ast::*};
+use swc_core::{
+    common::DUMMY_SP,
+    ecma::{ast::*, utils::quote_ident},
+};
+
+use crate::constants::{GLOBAL, MODULE, MODULE_REGISTRY_NAME};
 
 /// Returns an object member expression.
 ///
@@ -37,6 +42,24 @@ pub fn obj_lit(props: Option<Vec<PropOrSpread>>) -> Expr {
         props: props.unwrap_or(Vec::new()),
     }
     .into()
+}
+
+/// Returns an statement that import module from global and assign it.
+///
+/// eg. `global.__modules.registry[module_id]`
+pub fn get_module_from_global(src: &String) -> Expr {
+    Expr::Member(MemberExpr {
+        span: DUMMY_SP,
+        obj: obj_member_expr(
+            obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+            quote_ident!(MODULE_REGISTRY_NAME),
+        )
+        .into(),
+        prop: MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: Box::new(Expr::Lit(Lit::Str(Str::from(src.as_str())))),
+        }),
+    })
 }
 
 /// Check `ModuleDecl` is invalid.
