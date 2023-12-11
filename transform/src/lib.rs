@@ -1,12 +1,13 @@
 mod cjs_transformer;
 mod constants;
 mod esm_collector;
-mod module_mapper;
 mod helpers;
+mod module_mapper;
 
 use cjs_transformer::CommonJsTransformer;
 use constants::{ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME};
 use esm_collector::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
+use helpers::{decl_var_and_assign_stmt, import_module_from_global, obj_lit, obj_member_expr};
 use module_mapper::ModuleMapper;
 use std::collections::HashMap;
 use swc_core::{
@@ -17,7 +18,6 @@ use swc_core::{
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
-use helpers::{decl_var_and_assign_stmt, import_module_from_global, obj_lit, obj_member_expr};
 
 pub struct GlobalModuleTransformer {
     module_name: String,

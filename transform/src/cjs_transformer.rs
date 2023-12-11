@@ -9,8 +9,8 @@ use swc_core::{
 
 use crate::{
     constants::{CJS_API_NAME, GLOBAL, MODULE},
-    module_mapper::ModuleMapper,
     helpers::{decl_var_and_assign_stmt, obj_member_expr, require_module_from_global},
+    module_mapper::ModuleMapper,
 };
 
 #[derive(Debug)]
