@@ -1,7 +1,7 @@
 import { transform } from '@swc/core';
 import highlight from 'cli-highlight';
 
-const inputCode =`
+const DEMO_ESM =`
 import React, { useState, useEffect } from 'react';
 import { Container } from '@app/components';
 import { useCustomHook } from '@app/hooks';
@@ -27,8 +27,23 @@ export * as car from '@app/module_c';
 export { driver as driverModule } from '@app/module_d';
 `;
 
-;(async () => {
-  const { code: outputCode } = await transform(inputCode, {
+const DEMO_CJS = `
+const core = require('@app/core');
+const utils = global.requireWrapper(require('@app/utils'));
+
+if (process.env.NODE_ENV === 'production') {
+  module.exports = class ProductionClass extends core.Core {};
+} else {
+  module.exports = class DevelopmentClass extends core.Core {};
+}
+
+exports.getReact = () => {
+  return require('react');
+};
+`;
+
+const transformWithPlugin = async (code: string) => {
+  const result = await transform(code, {
     isModule: true,
     filename: 'demo.tsx',
     jsc: {
@@ -50,6 +65,13 @@ export { driver as driverModule } from '@app/module_d';
       externalHelpers: false,
     },
   });
+  return result.code;
+};
 
-  console.log(highlight(outputCode, { language: 'js' }));
-})();
+Promise.all([
+  transformWithPlugin(DEMO_ESM),
+  transformWithPlugin(DEMO_CJS),
+]).then(([esmResult, cjsResult]) => {
+  console.log('esm\n\n' + highlight(esmResult, { language: 'js' }));
+  console.log('cjs\n\n' + highlight(cjsResult, { language: 'js' }));
+});
