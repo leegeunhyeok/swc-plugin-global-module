@@ -1,3 +1,2 @@
-const _dummy = global.__modules.registry["dummy"];
+const _dummy = global.__modules.import("dummy");
 const __dummy = _dummy.default;
-global.__modules.esm("test.js", {});

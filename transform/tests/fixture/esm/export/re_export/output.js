@@ -1,4 +1,4 @@
-const _module = global.__modules.registry["module"];
+const _module = global.__modules.import("module");
 const __re_export = _module.a;
 const __re_export1 = _module.b;
 const __re_export2 = _module.c;

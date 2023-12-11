@@ -1,3 +1,2 @@
-const _react = global.__modules.registry["react"];
+const _react = global.__modules.import("react");
 const React = _react.default;
-global.__modules.esm("test.js", {});

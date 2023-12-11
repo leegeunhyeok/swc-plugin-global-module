@@ -1,14 +1,31 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`swc-plugin-global-module/runtime match snapshot 1`] = `
-"const __app_components = global.__modules.registry["@app/components"];
-const __app_core = global.__modules.registry["@app/core"];
-const __app_hooks = global.__modules.registry["@app/hooks"];
-const __app_module_a = global.__modules.registry["@app/module_a"];
-const __app_module_b = global.__modules.registry["@app/module_b"];
-const __app_module_c = global.__modules.registry["@app/module_c"];
-const __app_module_d = global.__modules.registry["@app/module_d"];
-const _react = global.__modules.registry["node_modules/react/cjs/react.development.js"];
+exports[`swc-plugin-global-module/runtime match snapshot (cjs) 1`] = `
+"const __cjs = global.__modules.cjs("demo.tsx");
+const core = global.__modules.require("@app/core");
+const utils = global.requireWrapper(global.__modules.require("@app/utils"));
+if (process.env.NODE_ENV === 'production') {
+    module.exports = __cjs.exports.default = class ProductionClass extends core.Core {
+    };
+} else {
+    module.exports = __cjs.exports.default = class DevelopmentClass extends core.Core {
+    };
+}
+exports.getReact = __cjs.exports.getReact = ()=>{
+    return global.__modules.require("node_modules/react/cjs/react.development.js");
+};
+"
+`;
+
+exports[`swc-plugin-global-module/runtime match snapshot (esm) 1`] = `
+"const __app_components = global.__modules.import("@app/components");
+const __app_core = global.__modules.import("@app/core");
+const __app_hooks = global.__modules.import("@app/hooks");
+const __app_module_a = global.__modules.import("@app/module_a");
+const __app_module_b = global.__modules.import("@app/module_b");
+const __app_module_c = global.__modules.import("@app/module_c");
+const __app_module_d = global.__modules.import("@app/module_d");
+const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
 const React = _react.default;
 const useState = _react.useState;
 const Container = __app_components.Container;
@@ -34,3 +51,5 @@ global.__modules.esm("demo.tsx", {
 }, __re_export_all, __re_export_all1);
 "
 `;
+
+exports[`swc-plugin-global-module/runtime when trying to get unregistered module should throw error 1`] = `"module 'unregistered' not found"`;

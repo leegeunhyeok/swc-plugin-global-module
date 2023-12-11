@@ -15,7 +15,7 @@ export const createModuleRegistry = () => new Proxy(
   },
 );
 
-export const createModule = (source?: any) => {
+export const obj = (source?: any) => {
   const mod = Object.create(null);
   return (source ? Object.assign(mod, source) : mod) as GlobalModule;
 };

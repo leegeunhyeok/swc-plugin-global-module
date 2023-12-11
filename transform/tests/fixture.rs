@@ -4,8 +4,12 @@ use swc_ecma_parser::{Syntax, TsConfig};
 use swc_ecma_transforms_testing::test_fixture;
 use swc_global_module::global_module;
 
+// ESM
 #[testing::fixture("tests/fixture/**/import/**/input.js")]
 #[testing::fixture("tests/fixture/**/export/**/input.js")]
+// CommonJS
+#[testing::fixture("tests/fixture/**/require/**/input.js")]
+#[testing::fixture("tests/fixture/**/exports/**/input.js")]
 #[testing::fixture("tests/fixture/**/normalize_src/**/input.js")]
 fn fixture(input: PathBuf) {
     let filename = input.to_string_lossy();

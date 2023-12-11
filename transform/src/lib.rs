@@ -1,10 +1,12 @@
+mod cjs_transformer;
 mod constants;
-mod module_collector_esm;
+mod esm_collector;
 mod module_mapper;
-mod utils;
+mod helpers;
 
+use cjs_transformer::CommonJsTransformer;
 use constants::{ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME};
-use module_collector_esm::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
+use esm_collector::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
 use module_mapper::ModuleMapper;
 use std::collections::HashMap;
 use swc_core::{
@@ -15,7 +17,7 @@ use swc_core::{
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
-use utils::{decl_var_and_assign_stmt, get_module_from_global, obj_lit, obj_member_expr};
+use helpers::{decl_var_and_assign_stmt, import_module_from_global, obj_lit, obj_member_expr};
 
 pub struct GlobalModuleTransformer {
     module_name: String,
@@ -172,7 +174,7 @@ impl GlobalModuleTransformer {
             for (index, registered) in self.module_mapper.registered_idents.iter().enumerate() {
                 stmts.insert(
                     index,
-                    decl_var_and_assign_stmt(registered.1, get_module_from_global(registered.0))
+                    decl_var_and_assign_stmt(registered.1, import_module_from_global(registered.0))
                         .into(),
                 );
             }
@@ -225,20 +227,22 @@ impl GlobalModuleTransformer {
             },
         );
 
-        let mut args = vec![
-            self.module_name.as_str().as_arg(),
-            obj_lit(Some(export_props)).as_arg(),
-        ];
-        args.extend(export_all_props);
-        stmts.push(
-            obj_member_expr(
-                obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
-                quote_ident!(ESM_API_NAME),
-            )
-            .as_call(DUMMY_SP, args)
-            .into_stmt()
-            .into(),
-        );
+        if exports.len() > 0 {
+            let mut args = vec![
+                self.module_name.as_str().as_arg(),
+                obj_lit(Some(export_props)).as_arg(),
+            ];
+            args.extend(export_all_props);
+            stmts.push(
+                obj_member_expr(
+                    obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+                    quote_ident!(ESM_API_NAME),
+                )
+                .as_call(DUMMY_SP, args)
+                .into_stmt()
+                .into(),
+            );
+        }
 
         stmts
     }
@@ -249,8 +253,8 @@ impl VisitMut for GlobalModuleTransformer {
 
     fn visit_mut_module(&mut self, module: &mut Module) {
         let mut esm_collector = EsModuleCollector::new(self.runtime_module);
-        module.visit_mut_with(&mut esm_collector);
 
+        module.visit_mut_with(&mut esm_collector);
         module
             .body
             .splice(..0, self.convert_esm_import(&esm_collector.imports));
@@ -258,6 +262,14 @@ impl VisitMut for GlobalModuleTransformer {
         module
             .body
             .extend(self.convert_esm_export(&esm_collector.exports));
+
+        if esm_collector.exports.is_empty() {
+            module.visit_mut_with(&mut CommonJsTransformer::new(
+                &self.module_mapper,
+                self.module_name.clone(),
+                self.runtime_module,
+            ));
+        }
     }
 }
 

@@ -1,9 +1,12 @@
 use swc_core::{
     common::DUMMY_SP,
-    ecma::{ast::*, utils::quote_ident},
+    ecma::{
+        ast::*,
+        utils::{quote_ident, ExprFactory},
+    },
 };
 
-use crate::constants::{GLOBAL, MODULE, MODULE_REGISTRY_NAME};
+use crate::constants::{GLOBAL, MODULE, MODULE_IMPORT_NAME, MODULE_REQUIRE_NAME};
 
 /// Returns an object member expression.
 ///
@@ -44,22 +47,32 @@ pub fn obj_lit(props: Option<Vec<PropOrSpread>>) -> Expr {
     .into()
 }
 
-/// Returns an statement that import module from global and assign it.
+/// Returns an statement that import module from global.
 ///
-/// eg. `global.__modules.registry[module_id]`
-pub fn get_module_from_global(src: &String) -> Expr {
-    Expr::Member(MemberExpr {
-        span: DUMMY_SP,
-        obj: obj_member_expr(
-            obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
-            quote_ident!(MODULE_REGISTRY_NAME),
-        )
-        .into(),
-        prop: MemberProp::Computed(ComputedPropName {
-            span: DUMMY_SP,
-            expr: Box::new(Expr::Lit(Lit::Str(Str::from(src.as_str())))),
-        }),
-    })
+/// eg. `global.__modules.import('module_id')`
+pub fn import_module_from_global(src: &String) -> Expr {
+    obj_member_expr(
+        obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+        quote_ident!(MODULE_IMPORT_NAME),
+    )
+    .as_call(
+        DUMMY_SP,
+        vec![Expr::Lit(Lit::Str(Str::from(src.as_str()))).as_arg()],
+    )
+}
+
+/// Returns an statement that require module from global.
+///
+/// eg. `global.__modules.require('module_id')`
+pub fn require_module_from_global(src: &String) -> Expr {
+    obj_member_expr(
+        obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+        quote_ident!(MODULE_REQUIRE_NAME),
+    )
+    .as_call(
+        DUMMY_SP,
+        vec![Expr::Lit(Lit::Str(Str::from(src.as_str()))).as_arg()],
+    )
 }
 
 /// Check `ModuleDecl` is invalid.

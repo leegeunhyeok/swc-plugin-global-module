@@ -1,4 +1,4 @@
-use crate::utils::is_invalid_module_decl;
+use crate::helpers::is_invalid_module_decl;
 use swc_core::{
     common::util::take::Take,
     ecma::{
