@@ -1,6 +1,6 @@
 {
     "name": "swc-plugin-global-module",
-    "version": "0.1.0-alpha.0",
+    "version": "0.1.0-alpha.1",
     "description": "Transform ESM and CJS to global scoped module",
     "author": "Geunhyeok LEE <dev.ghlee@gmail.com>",
     "license": "MIT",
