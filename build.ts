@@ -5,6 +5,7 @@ import { name, version } from './package.json';
 esbuild.build({
   entryPoints: [path.resolve('./runtime/index.ts')],
   outfile: 'dist/runtime.js',
+  bundle: true,
   banner: {
     js: `// ${name}@${version} runtime`
   },
