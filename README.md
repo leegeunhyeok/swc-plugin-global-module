@@ -44,6 +44,12 @@ await transform(code, {
         // Add plugin here.
         ['swc-plugin-global-module', {
           /**
+           * Convert CommonJS module statements to register to global registry.
+           *
+           * Defaults to `false`.
+           */
+          commonjs: true,
+          /**
            * Convert import statements to custom module system and remove export statements.
            *
            * Defaults to `false`.
@@ -79,6 +85,7 @@ await transform(code, {
 
 ```js
 const pluginOptions = {
+  commonjs: true,
   runtimeModule: true,
   external: ['@app/secret'],
   importPaths: {

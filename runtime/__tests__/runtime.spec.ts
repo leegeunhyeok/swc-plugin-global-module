@@ -58,6 +58,7 @@ const transformWithPlugin = async (code: string) => {
       experimental: {
         plugins: [
           ['.', {
+            commonjs: true,
             runtimeModule: true,
             importPaths: {
               react: 'node_modules/react/cjs/react.development.js',
