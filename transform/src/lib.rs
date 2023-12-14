@@ -4,7 +4,6 @@ mod esm_collector;
 mod helpers;
 mod module_mapper;
 
-use regex::Regex;
 use cjs_transformer::CommonJsTransformer;
 use constants::{ESM_API_NAME, GLOBAL, MODULE, MODULE_EXTERNAL_NAME};
 use esm_collector::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
@@ -14,6 +13,7 @@ use helpers::{
     obj_member_expr,
 };
 use module_mapper::ModuleMapper;
+use regex::Regex;
 use std::collections::HashMap;
 use swc_core::{
     common::DUMMY_SP,
