@@ -13,7 +13,6 @@ use helpers::{
     obj_member_expr,
 };
 use module_resolver::ModuleResolver;
-use regex::Regex;
 use std::collections::HashMap;
 use swc_core::{
     common::DUMMY_SP,
@@ -27,7 +26,6 @@ use swc_core::{
 pub struct GlobalModuleTransformer {
     module_name: String,
     runtime_module: bool,
-    external_regex: Option<Regex>,
     external_flags: HashMap<String, bool>,
     resolver: ModuleResolver,
 }
@@ -42,23 +40,13 @@ impl GlobalModuleTransformer {
         GlobalModuleTransformer {
             module_name,
             runtime_module,
-            external_regex: external_pattern
-                .and_then(|pattern| Some(Regex::new(pattern.as_str()).unwrap())),
             external_flags: Default::default(),
-            resolver: ModuleResolver::new(import_paths),
-        }
-    }
-
-    fn is_external(&self, src: &String) -> bool {
-        if let Some(regex) = &self.external_regex {
-            regex.is_match(src.as_str())
-        } else {
-            false
+            resolver: ModuleResolver::new(external_pattern, import_paths),
         }
     }
 
     fn register_external_module(&mut self, stmts: &mut Vec<ModuleItem>, src: &String) -> bool {
-        if !self.is_external(src) {
+        if !self.resolver.is_external(src) {
             false
         } else if let Some(_) = self.external_flags.get(src) {
             // Already registered.
@@ -105,14 +93,15 @@ impl GlobalModuleTransformer {
                 }
 
                 if self.runtime_module || (!self.runtime_module && *as_export) {
-                    let runtime_module_ident: Option<&Ident> = if self.runtime_module {
-                        Some(
-                            self.resolver
-                                .get_ident_by_src(module_src, self.is_external(module_src)),
-                        )
-                    } else {
-                        None
-                    };
+                    let runtime_module_ident: Option<&Ident> =
+                        if self.runtime_module {
+                            Some(self.resolver.get_ident_by_src(
+                                module_src,
+                                self.resolver.is_external(module_src),
+                            ))
+                        } else {
+                            None
+                        };
 
                     stmts.push(
                         match module_type {
@@ -226,7 +215,7 @@ impl VisitMut for GlobalModuleTransformer {
                     index,
                     decl_var_and_assign_stmt(
                         registered.1,
-                        if self.is_external(registered.0) {
+                        if self.resolver.is_external(registered.0) {
                             external_module_from_global(registered.0)
                         } else {
                             import_module_from_global(registered.0)
