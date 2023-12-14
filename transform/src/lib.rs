@@ -53,18 +53,14 @@ impl GlobalModuleTransformer {
     }
 
     fn is_external(&self, src: &String) -> bool {
-        println!("is_external");
         if let Some(regex) = &self.external_regex {
-            let res = regex.is_match(src.as_str());
-            println!("is_external {:#?}", res);
-            res
+            regex.is_match(src.as_str())
         } else {
             false
         }
     }
 
     fn register_external_module(&mut self, stmts: &mut Vec<ModuleItem>, src: &String) -> bool {
-        println!("register_external_module: {:#?}", src);
         if !self.is_external(src) {
             false
         } else if let Some(_) = self.external_flags.get(src) {
