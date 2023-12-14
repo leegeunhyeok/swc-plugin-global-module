@@ -26,7 +26,6 @@ use swc_core::{
 
 pub struct GlobalModuleTransformer {
     module_name: String,
-    commonjs: bool,
     runtime_module: bool,
     external_regex: Option<Regex>,
     external_flags: HashMap<String, bool>,
@@ -36,14 +35,12 @@ pub struct GlobalModuleTransformer {
 impl GlobalModuleTransformer {
     fn new(
         module_name: String,
-        commonjs: bool,
         runtime_module: bool,
         external_pattern: Option<String>,
         import_paths: Option<HashMap<String, String>>,
     ) -> Self {
         GlobalModuleTransformer {
             module_name,
-            commonjs,
             runtime_module,
             external_regex: external_pattern
                 .and_then(|pattern| Some(Regex::new(pattern.as_str()).unwrap())),
@@ -240,7 +237,7 @@ impl VisitMut for GlobalModuleTransformer {
             }
         }
 
-        if self.commonjs && esm_collector.exports.is_empty() {
+        if esm_collector.exports.is_empty() {
             module.visit_mut_with(&mut CommonJsTransformer::new(
                 &self.module_mapper,
                 self.module_name.clone(),
@@ -252,14 +249,12 @@ impl VisitMut for GlobalModuleTransformer {
 
 pub fn global_module(
     module_name: String,
-    commonjs: bool,
     runtime_module: bool,
     external_pattern: Option<String>,
     import_paths: Option<HashMap<String, String>>,
 ) -> impl VisitMut + Fold {
     as_folder(GlobalModuleTransformer::new(
         module_name,
-        commonjs,
         runtime_module,
         external_pattern,
         import_paths,

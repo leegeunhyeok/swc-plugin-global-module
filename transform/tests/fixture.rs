@@ -34,7 +34,6 @@ fn fixture(input: PathBuf) {
         &|_| {
             global_module(
                 String::from("test.js"),
-                true,
                 runtime,
                 external.to_owned(),
                 import_paths.to_owned(),
