@@ -7,8 +7,8 @@
 
 - 🌍 Register ESM and CJS to global module registry.
 - 🏃 Runtime mode
-  - Keep original `import` and `require` statements.
-  - Transform to global module registry's `import` and `require` statements.
+  - Enabled: Transform to global module registry's `import` and `require` statements.
+  - Disabled: Keep original `import`, `require` statements and register module to global module registry.
 
 ## How it works?
 
