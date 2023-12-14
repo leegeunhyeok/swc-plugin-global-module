@@ -56,9 +56,9 @@ await transform(code, {
            */
           runtimeModule: true,
           /**
-           * External module names to register to external registry.
+           * External import source pattern to register to external registry.
            */
-          external: [],
+          externalPattern: '^(react|react-native)',
           /**
            * Actual module path aliases (resolved module path)
            *
@@ -87,7 +87,7 @@ await transform(code, {
 const pluginOptions = {
   commonjs: true,
   runtimeModule: true,
-  external: ['@app/secret'],
+  externalPattern: '^(@app/secret)',
   importPaths: {
     react: 'node_modules/react/cjs/react.development.js',
   },
@@ -107,7 +107,7 @@ const __app_module_c = global.__modules.import("@app/module_c");
 const __app_module_d = global.__modules.import("@app/module_d");
 
 /*
- * `@app/secret` is registered to external registry due to `external` option.
+ * `@app/secret` is registered to external registry due to `externalPattern` option.
  *
  * `@app/secret` is registered in non-runtime mode like this,
  * ```js

@@ -15,7 +15,7 @@ use swc_global_module::global_module;
 struct GlobalModuleOptions {
     commonjs: Option<bool>,
     runtime_module: Option<bool>,
-    external: Option<Vec<String>>,
+    external_pattern: Option<String>,
     import_paths: Option<HashMap<String, String>>,
 }
 
@@ -34,7 +34,7 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
             .unwrap_or_default(),
         config.commonjs.unwrap_or(false),
         config.runtime_module.unwrap_or(false),
-        config.external,
+        config.external_pattern,
         config.import_paths,
     ))
 }

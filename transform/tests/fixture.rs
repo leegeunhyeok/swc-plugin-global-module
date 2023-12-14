@@ -12,7 +12,7 @@ fn fixture(input: PathBuf) {
     let runtime = !filename.contains("non-runtime");
 
     let external = if filename.contains("external") {
-        Some(Vec::from([String::from("react")]))
+        Some(String::from("^(react|react-native)"))
     } else {
         None
     };

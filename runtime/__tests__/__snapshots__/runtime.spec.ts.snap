@@ -29,11 +29,13 @@ const __app_module_a = global.__modules.import("@app/module_a");
 const __app_module_b = global.__modules.import("@app/module_b");
 const __app_module_c = global.__modules.import("@app/module_c");
 const __app_module_d = global.__modules.import("@app/module_d");
+const __app_secret = global.__modules.external("@app/secret");
 const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
 const React = _react.default;
 const useState = _react.useState;
 const Container = __app_components.Container;
 const useCustomHook = __app_hooks.useCustomHook;
+const SECRET_KEY = __app_secret.SECRET_KEY;
 const app = global.__modules.helpers.asWildcard(__app_core);
 const __re_export_all = global.__modules.helpers.asWildcard(__app_module_a);
 const __re_export_all1 = global.__modules.helpers.asWildcard(__app_module_b);
@@ -41,7 +43,7 @@ const __re_export = global.__modules.helpers.asWildcard(__app_module_c);
 const __re_export1 = __app_module_d.driver;
 function MyComponent() {
     const [count, setCount] = useState(0);
-    useCustomHook(app);
+    useCustomHook(SECRET_KEY);
     return /*#__PURE__*/ React.createElement(Container, null, count);
 }
 class __Class {

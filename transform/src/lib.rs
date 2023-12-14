@@ -4,6 +4,7 @@ mod esm_collector;
 mod helpers;
 mod module_mapper;
 
+use regex::Regex;
 use cjs_transformer::CommonJsTransformer;
 use constants::{ESM_API_NAME, GLOBAL, MODULE, MODULE_EXTERNAL_NAME};
 use esm_collector::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
@@ -27,7 +28,8 @@ pub struct GlobalModuleTransformer {
     module_name: String,
     commonjs: bool,
     runtime_module: bool,
-    external: HashMap<String, bool>,
+    external_regex: Option<Regex>,
+    external_flags: HashMap<String, bool>,
     module_mapper: ModuleMapper,
 }
 
@@ -36,38 +38,40 @@ impl GlobalModuleTransformer {
         module_name: String,
         commonjs: bool,
         runtime_module: bool,
-        external: Option<Vec<String>>,
+        external_pattern: Option<String>,
         import_paths: Option<HashMap<String, String>>,
     ) -> Self {
         GlobalModuleTransformer {
             module_name,
             commonjs,
             runtime_module,
-            external: external
-                .and_then(|external| {
-                    Some(
-                        external
-                            .iter()
-                            .map(|external| (external.clone(), false))
-                            .collect::<HashMap<String, bool>>(),
-                    )
-                })
-                .unwrap_or_default(),
+            external_regex: external_pattern
+                .and_then(|pattern| Some(Regex::new(pattern.as_str()).unwrap())),
+            external_flags: Default::default(),
             module_mapper: ModuleMapper::new(import_paths),
         }
     }
 
     fn is_external(&self, src: &String) -> bool {
-        self.external.contains_key(src)
+        println!("is_external");
+        if let Some(regex) = &self.external_regex {
+            let res = regex.is_match(src.as_str());
+            println!("is_external {:#?}", res);
+            res
+        } else {
+            false
+        }
     }
 
     fn register_external_module(&mut self, stmts: &mut Vec<ModuleItem>, src: &String) -> bool {
-        if let Some(registered) = self.external.get(src) {
-            if *registered {
-                return true;
-            }
-
-            self.external.insert(src.clone(), true);
+        println!("register_external_module: {:#?}", src);
+        if !self.is_external(src) {
+            false
+        } else if let Some(_) = self.external_flags.get(src) {
+            // Already registered.
+            true
+        } else {
+            self.external_flags.insert(src.clone(), true);
             let external_ident = private_ident!("__external");
 
             // import * as __external from 'src';
@@ -85,9 +89,8 @@ impl GlobalModuleTransformer {
                 .into_stmt()
                 .into(),
             );
-            return true;
+            true
         }
-        false
     }
 
     fn convert_esm_import(&mut self, imports: &Vec<ImportModule>) -> Vec<ModuleItem> {
@@ -255,14 +258,14 @@ pub fn global_module(
     module_name: String,
     commonjs: bool,
     runtime_module: bool,
-    external: Option<Vec<String>>,
+    external_pattern: Option<String>,
     import_paths: Option<HashMap<String, String>>,
 ) -> impl VisitMut + Fold {
     as_folder(GlobalModuleTransformer::new(
         module_name,
         commonjs,
         runtime_module,
-        external,
+        external_pattern,
         import_paths,
     ))
 }

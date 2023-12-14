@@ -58,7 +58,7 @@ const transformWithPlugin = async (code: string) => {
           ['.', {
             commonjs: true,
             runtimeModule: true,
-            external: ['@app/secret'],
+            externalPattern: '^(@app/secret)',
             importPaths: {
               react: 'node_modules/react/cjs/react.development.js',
             },
