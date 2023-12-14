@@ -2,7 +2,7 @@ mod cjs_transformer;
 mod constants;
 mod esm_collector;
 mod helpers;
-mod module_mapper;
+mod module_resolver;
 
 use cjs_transformer::CommonJsTransformer;
 use constants::{ESM_API_NAME, GLOBAL, MODULE, MODULE_EXTERNAL_NAME};
@@ -12,7 +12,7 @@ use helpers::{
     decl_var_and_assign_stmt, external_module_from_global, import_module_from_global, obj_lit,
     obj_member_expr,
 };
-use module_mapper::ModuleMapper;
+use module_resolver::ModuleResolver;
 use regex::Regex;
 use std::collections::HashMap;
 use swc_core::{
@@ -29,7 +29,7 @@ pub struct GlobalModuleTransformer {
     runtime_module: bool,
     external_regex: Option<Regex>,
     external_flags: HashMap<String, bool>,
-    module_mapper: ModuleMapper,
+    resolver: ModuleResolver,
 }
 
 impl GlobalModuleTransformer {
@@ -45,7 +45,7 @@ impl GlobalModuleTransformer {
             external_regex: external_pattern
                 .and_then(|pattern| Some(Regex::new(pattern.as_str()).unwrap())),
             external_flags: Default::default(),
-            module_mapper: ModuleMapper::new(import_paths),
+            resolver: ModuleResolver::new(import_paths),
         }
     }
 
@@ -107,7 +107,7 @@ impl GlobalModuleTransformer {
                 if self.runtime_module || (!self.runtime_module && *as_export) {
                     let runtime_module_ident: Option<&Ident> = if self.runtime_module {
                         Some(
-                            self.module_mapper
+                            self.resolver
                                 .get_ident_by_src(module_src, self.is_external(module_src)),
                         )
                     } else {
@@ -221,7 +221,7 @@ impl VisitMut for GlobalModuleTransformer {
             .extend(self.convert_esm_export(&esm_collector.exports));
 
         if self.runtime_module {
-            for (index, registered) in self.module_mapper.registered_idents.iter().enumerate() {
+            for (index, registered) in self.resolver.registered_idents.iter().enumerate() {
                 module.body.insert(
                     index,
                     decl_var_and_assign_stmt(
@@ -239,7 +239,7 @@ impl VisitMut for GlobalModuleTransformer {
 
         if esm_collector.exports.is_empty() {
             module.visit_mut_with(&mut CommonJsTransformer::new(
-                &self.module_mapper,
+                &self.resolver,
                 self.module_name.clone(),
                 self.runtime_module,
             ));

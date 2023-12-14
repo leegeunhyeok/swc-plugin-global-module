@@ -4,15 +4,15 @@ use swc_core::ecma::{ast::*, utils::private_ident};
 
 pub type ImportPaths = HashMap<String, String>;
 
-pub struct ModuleMapper {
+pub struct ModuleResolver {
     pub registered_idents: BTreeMap<String, Ident>,
     import_paths: Option<ImportPaths>,
     normalize_regex: Regex,
 }
 
-impl ModuleMapper {
+impl ModuleResolver {
     pub fn new(import_paths: Option<ImportPaths>) -> Self {
-        ModuleMapper {
+        ModuleResolver {
             import_paths,
             registered_idents: BTreeMap::new(),
             normalize_regex: Regex::new(r"[^a-zA-Z0-9]").unwrap(),

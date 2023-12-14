@@ -10,7 +10,7 @@ use swc_core::{
 use crate::{
     constants::{CJS_API_NAME, GLOBAL, MODULE},
     helpers::{decl_var_and_assign_stmt, obj_member_expr, require_module_from_global},
-    module_mapper::ModuleMapper,
+    module_resolver::ModuleResolver,
 };
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub struct Exports {
 }
 
 pub struct CommonJsTransformer<'a> {
-    module_mapper: &'a ModuleMapper,
+    resolver: &'a ModuleResolver,
     module_name: String,
     runtime_module: bool,
     cjs_boundary_ident: Ident,
@@ -34,9 +34,9 @@ pub struct CommonJsTransformer<'a> {
 }
 
 impl<'a> CommonJsTransformer<'a> {
-    pub fn new(module_mapper: &'a ModuleMapper, module_name: String, runtime_module: bool) -> Self {
+    pub fn new(resolver: &'a ModuleResolver, module_name: String, runtime_module: bool) -> Self {
         CommonJsTransformer {
-            module_mapper,
+            resolver,
             module_name,
             runtime_module,
             cjs_boundary_ident: private_ident!("__cjs"),
@@ -114,7 +114,7 @@ impl VisitMut for CommonJsTransformer<'_> {
                 };
                 *expr = require_module_from_global(
                     &self
-                        .module_mapper
+                        .resolver
                         .to_actual_path(&src, false)
                         .unwrap_or(src.to_string()),
                 );
