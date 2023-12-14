@@ -2,6 +2,7 @@ pub const GLOBAL: &str = "global";
 pub const MODULE: &str = "__modules";
 pub const MODULE_IMPORT_NAME: &str = "import";
 pub const MODULE_REQUIRE_NAME: &str = "require";
+pub const MODULE_EXTERNAL_NAME: &str = "external";
 pub const MODULE_HELPER_NAME: &str = "helpers";
 pub const HELPER_AS_WILDCARD_NAME: &str = "asWildcard";
 

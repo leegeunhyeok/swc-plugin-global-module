@@ -50,6 +50,10 @@ await transform(code, {
            */
           runtimeModule: true,
           /**
+           * External module names to register to external registry.
+           */
+          external: [],
+          /**
            * Actual module path aliases (resolved module path)
            *
            * Defaults to none.
@@ -73,56 +77,70 @@ await transform(code, {
 
 ## Preview
 
-Before
+```js
+const pluginOptions = {
+  runtimeModule: true,
+  external: ['@app/secret'],
+  importPaths: {
+    react: 'node_modules/react/cjs/react.development.js',
+  },
+}
+```
+
+**Before**
 
 ```tsx
 // ESM
-import React, { useState, useEffect } from 'react';
-import { Container, Section, Button, Text } from '@app/components';
-import { useCustomHook } from '@app/hooks';
-import * as app from '@app/core';
+const __app_components = global.__modules.import("@app/components");
+const __app_core = global.__modules.import("@app/core");
+const __app_hooks = global.__modules.import("@app/hooks");
+const __app_module_a = global.__modules.import("@app/module_a");
+const __app_module_b = global.__modules.import("@app/module_b");
+const __app_module_c = global.__modules.import("@app/module_c");
+const __app_module_d = global.__modules.import("@app/module_d");
 
-// named export & declaration
-export function MyComponent(): JSX.Element {
+/*
+ * `@app/secret` is registered to external registry due to `external` option.
+ *
+ * `@app/secret` is registered in non-runtime mode like this,
+ * ```js
+ * import * as __external from '@app/secret';
+ * global.__modules.external('@app/secret', __external);
+ * ```
+ */
+const __app_secret = global.__modules.external("@app/secret");
+
+/**
+ * `react` replaced due to `importPaths` option.
+ */
+const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
+const React = _react.default;
+const useState = _react.useState;
+const Container = __app_components.Container;
+const useCustomHook = __app_hooks.useCustomHook;
+const SECRET_KEY = __app_secret.SECRET_KEY;
+const app = global.__modules.helpers.asWildcard(__app_core);
+const __re_export_all = global.__modules.helpers.asWildcard(__app_module_a);
+const __re_export_all1 = global.__modules.helpers.asWildcard(__app_module_b);
+const __re_export = global.__modules.helpers.asWildcard(__app_module_c);
+const __re_export1 = __app_module_d.driver;
+function MyComponent() {
   const [count, setCount] = useState(0);
-  useCustomHook(app);
-  return <Container>{count}</Container>;
+  useCustomHook(SECRET_KEY);
+  return /*#__PURE__*/ React.createElement(Container, null, count);
 }
-
-// named export with alias
-export { app as AppCore };
-
-// default export & anonymous declaration
-export default class {}
-
-// re-exports
-export * from '@app/module_a';
-export * from '@app/module_b';
-export * as car from '@app/module_c';
-export { driver as driverModule } from '@app/module_d';
+class __Class {
+}
+global.__modules.esm("demo.tsx", {
+  MyComponent,
+  AppCore: app,
+  default: __Class,
+  car: __re_export,
+  driverModule: __re_export1
+}, __re_export_all, __re_export_all1);
 ```
 
-```js
-// CJS
-const core = require('@app/core');
-const utils = global.requireWrapper(require('@app/utils'));
-
-if (process.env.NODE_ENV === 'production') {
-  // Default exports (dynamic)
-  module.exports = class ProductionClass extends core.Core {};
-} else {
-  // Default exports (dynamic)
-  module.exports = class DevelopmentClass extends core.Core {};
-}
-
-// Named exports
-exports.getReact = () => {
-  // Dynamic require
-  return require('react');
-};
-```
-
-After
+**After**
 
 ```js
 const __app_components = global.__modules.import("@app/components");

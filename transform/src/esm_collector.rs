@@ -25,33 +25,42 @@ pub struct ImportModule {
     pub imported: Option<Ident>,
     pub module_src: String,
     pub module_type: ModuleType,
+    pub as_export: bool,
 }
 
 impl ImportModule {
-    fn default(ident: Ident, imported: Option<Ident>, module_src: String) -> Self {
+    fn default(ident: Ident, imported: Option<Ident>, module_src: String, as_export: bool) -> Self {
         ImportModule {
             ident,
             imported,
             module_src,
             module_type: ModuleType::Default,
+            as_export,
         }
     }
 
-    fn named(ident: Ident, imported: Option<Ident>, module_src: String) -> Self {
+    fn named(ident: Ident, imported: Option<Ident>, module_src: String, as_export: bool) -> Self {
         ImportModule {
             ident,
             imported,
             module_src,
             module_type: ModuleType::Named,
+            as_export,
         }
     }
 
-    fn namespace(ident: Ident, imported: Option<Ident>, module_src: String) -> Self {
+    fn namespace(
+        ident: Ident,
+        imported: Option<Ident>,
+        module_src: String,
+        as_export: bool,
+    ) -> Self {
         ImportModule {
             ident,
             imported,
             module_src,
             module_type: ModuleType::NamespaceOrAll,
+            as_export,
         }
     }
 }
@@ -358,19 +367,13 @@ impl VisitMut for EsModuleCollector {
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         debug!("import decl {:#?}", import_decl);
 
-        // Collect when `runtime_module` is `true`.
-        // If non-runtime, import statements will be striped by `take()`.
-        if !self.runtime_module {
-            return;
-        }
-
         import_decl.specifiers.iter().for_each(|import_spec| {
             let src = import_decl.src.value.to_string();
             match import_spec {
                 ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
                     debug!("default import: {:#?}", local.sym);
                     self.imports
-                        .push(ImportModule::default(local.clone(), None, src));
+                        .push(ImportModule::default(local.clone(), None, src, false));
                 }
                 ImportSpecifier::Named(import_named_spec) => match import_named_spec {
                     ImportNamedSpecifier {
@@ -384,6 +387,7 @@ impl VisitMut for EsModuleCollector {
                                 local.clone(),
                                 Some(imported_ident.clone()),
                                 src,
+                                false,
                             ));
                         }
                         ModuleExportName::Str(_) => unimplemented!(),
@@ -395,13 +399,13 @@ impl VisitMut for EsModuleCollector {
                     } => {
                         debug!("named import: {:#?}", local.sym);
                         self.imports
-                            .push(ImportModule::named(local.clone(), None, src));
+                            .push(ImportModule::named(local.clone(), None, src, false));
                     }
                 },
                 ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
                     debug!("namespace import: {:#?}", local.sym);
                     self.imports
-                        .push(ImportModule::namespace(local.clone(), None, src));
+                        .push(ImportModule::namespace(local.clone(), None, src, false));
                 }
             }
         });
@@ -461,6 +465,7 @@ impl VisitMut for EsModuleCollector {
                         export_ident.clone(),
                         None,
                         module_src.value.to_string(),
+                        true,
                     ));
                     self.exports.push(ExportModule::named(
                         export_ident,
@@ -486,6 +491,7 @@ impl VisitMut for EsModuleCollector {
                                 } else {
                                     ModuleType::Named
                                 },
+                                as_export: true,
                             });
 
                             match &exported {
@@ -514,6 +520,7 @@ impl VisitMut for EsModuleCollector {
             export_all_ident.clone(),
             None,
             export_all.src.value.to_string(),
+            true,
         ));
         self.exports
             .push(ExportModule::all(export_all_ident.clone(), None));

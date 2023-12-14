@@ -19,8 +19,10 @@ impl ModuleMapper {
         }
     }
 
-    pub fn get_ident_by_src(&mut self, src: &String) -> &Ident {
-        let module_path = self.to_actual_path(src).unwrap_or(src.to_string());
+    pub fn get_ident_by_src(&mut self, src: &String, is_external: bool) -> &Ident {
+        let module_path = self
+            .to_actual_path(src, is_external)
+            .unwrap_or(src.to_string());
         self.registered_idents
             .entry(module_path)
             .or_insert(private_ident!(self
@@ -29,14 +31,17 @@ impl ModuleMapper {
                 .to_string()))
     }
 
-    pub fn to_actual_path(&self, src: &String) -> Option<String> {
-        if let Some(actual_path) = self
+    pub fn to_actual_path(&self, src: &String, is_external: bool) -> Option<String> {
+        if is_external {
+            None
+        } else if let Some(actual_path) = self
             .import_paths
             .as_ref()
             .and_then(|import_paths| import_paths.get(src))
         {
-            return Some(actual_path.clone());
+            Some(actual_path.clone())
+        } else {
+            None
         }
-        None
     }
 }

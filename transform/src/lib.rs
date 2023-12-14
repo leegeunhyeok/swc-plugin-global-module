@@ -5,16 +5,20 @@ mod helpers;
 mod module_mapper;
 
 use cjs_transformer::CommonJsTransformer;
-use constants::{ESM_API_NAME, GLOBAL, HELPER_AS_WILDCARD_NAME, MODULE, MODULE_HELPER_NAME};
+use constants::{ESM_API_NAME, GLOBAL, MODULE, MODULE_EXTERNAL_NAME};
 use esm_collector::{EsModuleCollector, ExportModule, ImportModule, ModuleType};
-use helpers::{decl_var_and_assign_stmt, import_module_from_global, obj_lit, obj_member_expr};
+use helpers::{
+    create_default_import_stmt, create_named_import_stmt, create_namespace_import_stmt,
+    decl_var_and_assign_stmt, external_module_from_global, import_module_from_global, obj_lit,
+    obj_member_expr,
+};
 use module_mapper::ModuleMapper;
 use std::collections::HashMap;
 use swc_core::{
     common::DUMMY_SP,
     ecma::{
         ast::*,
-        utils::{quote_ident, ExprFactory},
+        utils::{private_ident, quote_ident, ExprFactory},
         visit::{as_folder, noop_visit_mut_type, Fold, VisitMut, VisitMutWith},
     },
 };
@@ -22,6 +26,7 @@ use swc_core::{
 pub struct GlobalModuleTransformer {
     module_name: String,
     runtime_module: bool,
+    external: HashMap<String, bool>,
     module_mapper: ModuleMapper,
 }
 
@@ -29,122 +34,57 @@ impl GlobalModuleTransformer {
     fn new(
         module_name: String,
         runtime_module: bool,
+        external: Option<Vec<String>>,
         import_paths: Option<HashMap<String, String>>,
     ) -> Self {
         GlobalModuleTransformer {
             module_name,
             runtime_module,
+            external: external
+                .and_then(|external| {
+                    Some(
+                        external
+                            .iter()
+                            .map(|external| (external.clone(), false))
+                            .collect::<HashMap<String, bool>>(),
+                    )
+                })
+                .unwrap_or_default(),
             module_mapper: ModuleMapper::new(import_paths),
         }
     }
 
-    /// Create unique module identifier and returns a statement that import default value from global.
-    ///
-    /// eg. `const ident = {module_ident}.default`
-    /// eg. `import ident from "module_src"`
-    fn create_default_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
-        if self.runtime_module {
-            let module_ident = self.module_mapper.get_ident_by_src(module_src);
-            decl_var_and_assign_stmt(
-                &ident,
-                obj_member_expr(module_ident.clone().into(), quote_ident!("default")),
-            )
-            .into()
-        } else {
-            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
-                span: DUMMY_SP,
-                specifiers: vec![ImportDefaultSpecifier {
-                    span: DUMMY_SP,
-                    local: ident.clone(),
-                }
-                .into()],
-                src: Str::from(module_src.clone()).into(),
-                type_only: false,
-                with: None,
-            }))
-        }
+    fn is_external(&self, src: &String) -> bool {
+        self.external.contains_key(src)
     }
 
-    /// Create unique module identifier and returns a statement that import named value from global.
-    ///
-    /// eg. `const ident = {module_ident}.ident`
-    /// eg. `import { ident } from "module_src"`
-    fn create_named_import_stmt(
-        &mut self,
-        module_src: &String,
-        ident: &Ident,
-        imported: &Option<Ident>,
-    ) -> ModuleItem {
-        if self.runtime_module {
-            let module_ident = self.module_mapper.get_ident_by_src(module_src);
-            decl_var_and_assign_stmt(
-                &ident,
+    fn register_external_module(&mut self, stmts: &mut Vec<ModuleItem>, src: &String) -> bool {
+        if let Some(registered) = self.external.get(src) {
+            if *registered {
+                return true;
+            }
+
+            self.external.insert(src.clone(), true);
+            let external_ident = private_ident!("__external");
+
+            // import * as __external from 'src';
+            // global.__modules.external('src', __external);
+            stmts.push(create_namespace_import_stmt(src, &external_ident, None));
+            stmts.push(
                 obj_member_expr(
-                    module_ident.clone().into(),
-                    quote_ident!(imported.clone().unwrap_or(ident.clone()).sym),
-                ),
-            )
-            .into()
-        } else {
-            ModuleDecl::Import(ImportDecl {
-                span: DUMMY_SP,
-                specifiers: vec![ImportNamedSpecifier {
-                    span: DUMMY_SP,
-                    local: ident.clone(),
-                    imported: imported.clone().and_then(|imported_ident| {
-                        Some(ModuleExportName::Ident(imported_ident.into()))
-                    }),
-                    is_type_only: false,
-                }
-                .into()],
-                src: Str::from(module_src.clone()).into(),
-                type_only: false,
-                with: None,
-            })
-            .into()
+                    obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
+                    quote_ident!(MODULE_EXTERNAL_NAME),
+                )
+                .as_call(
+                    DUMMY_SP,
+                    vec![Expr::from(src.as_str()).as_arg(), external_ident.as_arg()],
+                )
+                .into_stmt()
+                .into(),
+            );
+            return true;
         }
-    }
-
-    /// Create unique module identifier and returns a statement that import namespaced value from global.
-    ///
-    /// eg. `const ident = global.__modules.helpers.asWildcard(module_ident)`
-    /// eg. `import * as ident from "module_src"`
-    fn create_namespace_import_stmt(&mut self, module_src: &String, ident: &Ident) -> ModuleItem {
-        if self.runtime_module {
-            let module_ident = self.module_mapper.get_ident_by_src(module_src);
-            decl_var_and_assign_stmt(
-                &ident,
-                Expr::Call(CallExpr {
-                    span: DUMMY_SP,
-                    type_args: None,
-                    callee: Callee::Expr(Box::new(obj_member_expr(
-                        obj_member_expr(
-                            obj_member_expr(
-                                quote_ident!(GLOBAL).into(),
-                                quote_ident!(MODULE).into(),
-                            ),
-                            quote_ident!(MODULE_HELPER_NAME),
-                        ),
-                        quote_ident!(HELPER_AS_WILDCARD_NAME),
-                    ))),
-                    args: vec![module_ident.clone().as_arg()],
-                }),
-            )
-            .into()
-        } else {
-            ModuleDecl::Import(ImportDecl {
-                span: DUMMY_SP,
-                src: Str::from(module_src.clone()).into(),
-                type_only: false,
-                with: None,
-                specifiers: vec![ImportStarAsSpecifier {
-                    span: DUMMY_SP,
-                    local: ident.clone(),
-                }
-                .into()],
-            })
-            .into()
-        }
+        false
     }
 
     fn convert_esm_import(&mut self, imports: &Vec<ImportModule>) -> Vec<ModuleItem> {
@@ -156,29 +96,47 @@ impl GlobalModuleTransformer {
                  imported,
                  module_src,
                  module_type,
-             }| match module_type {
-                ModuleType::Default | ModuleType::DefaultAsNamed => {
-                    stmts.push(self.create_default_import_stmt(module_src, ident).into());
+                 as_export,
+             }| {
+                if !self.runtime_module
+                    && !*as_export
+                    && self.register_external_module(&mut stmts, module_src)
+                {
+                    return;
                 }
-                ModuleType::Named => stmts.push(
-                    self.create_named_import_stmt(module_src, ident, imported)
+
+                if self.runtime_module || (!self.runtime_module && *as_export) {
+                    let runtime_module_ident: Option<&Ident> = if self.runtime_module {
+                        Some(
+                            self.module_mapper
+                                .get_ident_by_src(module_src, self.is_external(module_src)),
+                        )
+                    } else {
+                        None
+                    };
+
+                    stmts.push(
+                        match module_type {
+                            ModuleType::Default | ModuleType::DefaultAsNamed => {
+                                create_default_import_stmt(module_src, ident, runtime_module_ident)
+                            }
+                            ModuleType::Named => create_named_import_stmt(
+                                module_src,
+                                ident,
+                                runtime_module_ident,
+                                imported,
+                            ),
+                            ModuleType::NamespaceOrAll => create_namespace_import_stmt(
+                                module_src,
+                                ident,
+                                runtime_module_ident,
+                            ),
+                        }
                         .into(),
-                ),
-                ModuleType::NamespaceOrAll => {
-                    stmts.push(self.create_namespace_import_stmt(module_src, ident).into())
+                    )
                 }
             },
         );
-
-        if self.runtime_module {
-            for (index, registered) in self.module_mapper.registered_idents.iter().enumerate() {
-                stmts.insert(
-                    index,
-                    decl_var_and_assign_stmt(registered.1, import_module_from_global(registered.0))
-                        .into(),
-                );
-            }
-        }
 
         stmts
     }
@@ -263,6 +221,23 @@ impl VisitMut for GlobalModuleTransformer {
             .body
             .extend(self.convert_esm_export(&esm_collector.exports));
 
+        if self.runtime_module {
+            for (index, registered) in self.module_mapper.registered_idents.iter().enumerate() {
+                module.body.insert(
+                    index,
+                    decl_var_and_assign_stmt(
+                        registered.1,
+                        if self.is_external(registered.0) {
+                            external_module_from_global(registered.0)
+                        } else {
+                            import_module_from_global(registered.0)
+                        },
+                    )
+                    .into(),
+                );
+            }
+        }
+
         if esm_collector.exports.is_empty() {
             module.visit_mut_with(&mut CommonJsTransformer::new(
                 &self.module_mapper,
@@ -276,11 +251,13 @@ impl VisitMut for GlobalModuleTransformer {
 pub fn global_module(
     module_name: String,
     runtime_module: bool,
+    external: Option<Vec<String>>,
     import_paths: Option<HashMap<String, String>>,
 ) -> impl VisitMut + Fold {
     as_folder(GlobalModuleTransformer::new(
         module_name,
         runtime_module,
+        external,
         import_paths,
     ))
 }

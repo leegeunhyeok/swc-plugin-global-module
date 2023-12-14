@@ -32,8 +32,10 @@ import type { GlobalModule, GlobalModuleApi } from './types';
   };
 
   const registry = createModuleRegistry();
+  const externalRegistry = createModuleRegistry();
   const globalModuleApi: GlobalModuleApi = {
     __registry: registry,
+    __externalRegistry: externalRegistry,
     esm: (moduleId, exportedModule, ...reExportedModules) => {
       const esModule = __copyProps(obj(exportedModule), exportedModule);
       reExportedModules.forEach((reExportedModule) => {
@@ -47,6 +49,11 @@ import type { GlobalModule, GlobalModuleApi } from './types';
         value: true,
       }));
       return { exports: commonJsModule };
+    },
+    external: (source, externalModule) => {
+      return typeof externalModule !== 'undefined'
+        ? externalRegistry[source] = externalModule
+        : externalRegistry[source];
     },
     import: (moduleId) => registry[moduleId],
     require: (moduleId) => {

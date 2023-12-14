@@ -8,6 +8,7 @@ export interface CommonJsContext {
 
 export interface GlobalModuleApi {
   __registry: GlobalModuleRegistry;
+  __externalRegistry: GlobalModuleRegistry;
   /**
    * Register an ESM module to global registry.
    * 
@@ -43,6 +44,22 @@ export interface GlobalModuleApi {
    * ```
    */
   cjs: (id: GlobalModuleId) => CommonJsContext,
+  /**
+   * Register module as external to global module registry.
+   * 
+   * - Provide `source` only: get module from global registry.
+   * - Provide `source` and `module`: register module to global registry.
+   * 
+   * ```ts
+   * // register module
+   * import * as __external from 'react';
+   * external('react', __external);
+   * 
+   * // get module
+   * const fromGlobal = external('react');
+   * ```
+   */
+  external: (source: string, module?: GlobalModule) => GlobalModule,
   import: (id: GlobalModuleId) => GlobalModule,
   require: (id: GlobalModuleId) => GlobalModule,
   helpers: {

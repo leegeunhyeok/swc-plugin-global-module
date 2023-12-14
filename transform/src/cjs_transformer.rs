@@ -115,7 +115,7 @@ impl VisitMut for CommonJsTransformer<'_> {
                 *expr = require_module_from_global(
                     &self
                         .module_mapper
-                        .to_actual_path(&src)
+                        .to_actual_path(&src, false)
                         .unwrap_or(src.to_string()),
                 );
             }

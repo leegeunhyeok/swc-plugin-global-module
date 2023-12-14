@@ -14,6 +14,7 @@ use swc_global_module::global_module;
 #[serde(rename_all = "camelCase")]
 struct GlobalModuleOptions {
     runtime_module: Option<bool>,
+    external: Option<Vec<String>>,
     import_paths: Option<HashMap<String, String>>,
 }
 
@@ -31,6 +32,7 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
             .get_context(&TransformPluginMetadataContextKind::Filename)
             .unwrap_or_default(),
         config.runtime_module.unwrap_or(false),
+        config.external,
         config.import_paths,
     ))
 }

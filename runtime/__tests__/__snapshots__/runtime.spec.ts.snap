@@ -1,5 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`swc-plugin-global-module/runtime external modules when register module to external registry when call \`import()\` to get external module should throw error 1`] = `"module 'external' not found"`;
+
+exports[`swc-plugin-global-module/runtime external modules when register module to external registry when call \`require()\` to get external module should throw error 1`] = `"module 'external' not found"`;
+
 exports[`swc-plugin-global-module/runtime match snapshot (cjs) 1`] = `
 "const __cjs = global.__modules.cjs("demo.tsx");
 const core = global.__modules.require("@app/core");

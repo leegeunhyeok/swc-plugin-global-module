@@ -308,4 +308,44 @@ describe('swc-plugin-global-module/runtime', () => {
       });
     });
   });
+
+  describe('external modules', () => {
+    const MODULE_ID = 'external';
+
+    describe('when register module to external registry', () => {
+      let exportKey: string;
+      let exportValue: string;
+
+      beforeEach(() => {
+        exportKey = faker.string.alpha(10);
+        exportValue = faker.string.uuid();
+        global.__modules.external(MODULE_ID, {
+          [exportKey]: exportValue,
+        });
+      });
+
+      describe('when call `external()` to get external module', () => {
+        it('should returns exported module', () => {
+          const targetModule = global.__modules.external(MODULE_ID);
+          expect(targetModule[exportKey]).toEqual(exportValue);
+        });
+      });
+
+      describe('when call `import()` to get external module', () => {
+        it('should throw error', () => {
+          expect(() => {
+            global.__modules.import(MODULE_ID);
+          }).toThrowErrorMatchingSnapshot();
+        });
+      });
+
+      describe('when call `require()` to get external module', () => {
+        it('should throw error', () => {
+          expect(() => {
+            global.__modules.require(MODULE_ID);
+          }).toThrowErrorMatchingSnapshot();
+        });
+      });
+    });
+  });
 });

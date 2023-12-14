@@ -5,12 +5,13 @@ const DEMO_ESM =`
 import React, { useState, useEffect } from 'react';
 import { Container } from '@app/components';
 import { useCustomHook } from '@app/hooks';
+import { SECRET_KEY } from '@app/secret';
 import * as app from '@app/core';
 
 // named export & declaration
 export function MyComponent(): JSX.Element {
   const [count, setCount] = useState(0);
-  useCustomHook(app);
+  useCustomHook(SECRET_KEY);
   return <Container>{count}</Container>;
 }
 
@@ -56,6 +57,7 @@ const transformWithPlugin = async (code: string) => {
         plugins: [
           ['.', {
             runtimeModule: true,
+            external: ['@app/secret'],
             importPaths: {
               react: 'node_modules/react/cjs/react.development.js',
             },
