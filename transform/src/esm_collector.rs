@@ -1,6 +1,6 @@
 use crate::helpers::is_invalid_module_decl;
 use swc_core::{
-    common::util::take::Take,
+    common::{util::take::Take, DUMMY_SP},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -102,6 +102,7 @@ impl ExportModule {
 
 pub struct EsModuleCollector {
     runtime_module: bool,
+    decls: Vec<Ident>,
     pub imports: Vec<ImportModule>,
     pub exports: Vec<ExportModule>,
 }
@@ -110,8 +111,9 @@ impl EsModuleCollector {
     pub fn new(runtime_module: bool) -> Self {
         EsModuleCollector {
             runtime_module,
-            imports: Vec::new(),
-            exports: Vec::new(),
+            decls: Default::default(),
+            imports: Default::default(),
+            exports: Default::default(),
         }
     }
 
@@ -134,7 +136,7 @@ impl EsModuleCollector {
         export_default_expr: &mut ExportDefaultExpr,
     ) -> Option<Stmt> {
         debug!("export default expr {:#?}", export_default_expr);
-        let ident = private_ident!("__export_default");
+        let ident: Ident = private_ident!("__export_default");
         let orig_expr = export_default_expr.expr.clone();
         self.exports.push(ExportModule::default(ident.clone()));
         if self.runtime_module {
@@ -144,6 +146,7 @@ impl EsModuleCollector {
                     .into(),
             )
         } else {
+            self.decls.push(ident.clone());
             *export_default_expr.expr = orig_expr.make_assign_to(AssignOp::Assign, ident.into());
             None
         }
@@ -340,6 +343,23 @@ impl VisitMut for EsModuleCollector {
             if self.runtime_module && stmt.is_module_decl() {
                 stmt.take();
             }
+        }
+
+        if self.decls.len() > 0 {
+            stmts.extend(self.decls.iter().map(|ident| {
+                Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                    declare: false,
+                    decls: vec![VarDeclarator {
+                        definite: false,
+                        init: None,
+                        name: ident.clone().into(),
+                        span: DUMMY_SP,
+                    }],
+                    span: DUMMY_SP,
+                    kind: VarDeclKind::Var,
+                })))
+                .into()
+            }));
         }
 
         stmts.retain(|stmt| {

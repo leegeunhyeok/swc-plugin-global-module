@@ -69,7 +69,6 @@ import type { GlobalModule, GlobalModuleApi } from './types';
     },
   };
 
-  __defProp(global, '__export_default', { value: undefined });
   __defProp(global, '__modules', { value: globalModuleApi });
 
   // Define `global` property to global object.
