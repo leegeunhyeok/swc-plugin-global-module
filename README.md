@@ -3,6 +3,9 @@
 > [!WARNING]
 > This plugin is for custom module system to implement Hot Module Replacement(HMR) in some bundlers that don't support it.
 
+> [!WARNING]
+> New APIs working in progress..
+
 ## Features
 
 - 🌍 Register ESM and CJS to global module registry.
