@@ -47,6 +47,12 @@ await transform(code, {
         // Add plugin here.
         ['swc-plugin-global-module', {
           /**
+           * Module id.
+           * 
+           * Defaults to filename.
+           */
+          moduleId: 'id',
+          /**
            * Convert import statements to custom module system and remove export statements.
            *
            * Defaults to `false`.
@@ -82,6 +88,7 @@ await transform(code, {
 
 ```js
 const pluginOptions = {
+  moduleId: (123).toString(),
   runtimeModule: true,
   externalPattern: '^(@app/secret)',
   importPaths: {

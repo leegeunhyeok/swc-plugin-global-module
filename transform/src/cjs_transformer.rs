@@ -27,17 +27,17 @@ pub struct Exports {
 
 pub struct CommonJsTransformer<'a> {
     resolver: &'a ModuleResolver,
-    module_name: String,
+    module_id: String,
     runtime_module: bool,
     cjs_boundary_ident: Ident,
     exported: i32,
 }
 
 impl<'a> CommonJsTransformer<'a> {
-    pub fn new(resolver: &'a ModuleResolver, module_name: String, runtime_module: bool) -> Self {
+    pub fn new(resolver: &'a ModuleResolver, module_id: String, runtime_module: bool) -> Self {
         CommonJsTransformer {
             resolver,
-            module_name,
+            module_id,
             runtime_module,
             cjs_boundary_ident: private_ident!("__cjs"),
             exported: 0,
@@ -46,13 +46,13 @@ impl<'a> CommonJsTransformer<'a> {
 
     /// Returns an expression that create new CommonJS boundary.
     ///
-    /// eg. `const boundary = global.__modules.cjs("module_src")`
+    /// eg. `const boundary = global.__modules.cjs("module_id")`
     fn get_cjs_boundary(&mut self) -> Expr {
         obj_member_expr(
             obj_member_expr(quote_ident!(GLOBAL).into(), quote_ident!(MODULE).into()),
             quote_ident!(CJS_API_NAME).into(),
         )
-        .as_call(DUMMY_SP, vec![self.module_name.as_str().as_arg()])
+        .as_call(DUMMY_SP, vec![self.module_id.as_str().as_arg()])
     }
 }
 

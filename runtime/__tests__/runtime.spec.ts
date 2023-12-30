@@ -46,7 +46,7 @@ exports.getReact = () => {
 };
 `;
 
-const transformWithPlugin = async (code: string) => {
+const transformWithPlugin = async (code: string, moduleId?: string) => {
   const result = await transform(code, {
     isModule: true,
     filename: 'demo.tsx',
@@ -89,6 +89,18 @@ describe('swc-plugin-global-module/runtime', () => {
   snapshot('match snapshot (cjs)', async () => {
     expect(
       await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS),
+    ).toMatchSnapshot();
+  });
+
+  snapshot('match snapshot (esm + moduleId)', async () => {
+    expect(
+      await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_ESM, 'esm-id'),
+    ).toMatchSnapshot();
+  });
+
+  snapshot('match snapshot (cjs + moduleId)', async () => {
+    expect(
+      await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS, 'cjs-id'),
     ).toMatchSnapshot();
   });
 

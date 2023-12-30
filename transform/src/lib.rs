@@ -24,7 +24,7 @@ use swc_core::{
 };
 
 pub struct GlobalModuleTransformer {
-    module_name: String,
+    module_id: String,
     runtime_module: bool,
     external_flags: HashMap<String, bool>,
     resolver: ModuleResolver,
@@ -32,13 +32,13 @@ pub struct GlobalModuleTransformer {
 
 impl GlobalModuleTransformer {
     fn new(
-        module_name: String,
+        module_id: String,
         runtime_module: bool,
         external_pattern: Option<String>,
         import_paths: Option<HashMap<String, String>>,
     ) -> Self {
         GlobalModuleTransformer {
-            module_name,
+            module_id,
             runtime_module,
             external_flags: Default::default(),
             resolver: ModuleResolver::new(external_pattern, import_paths),
@@ -175,7 +175,7 @@ impl GlobalModuleTransformer {
 
         if exports.len() > 0 {
             let mut args = vec![
-                self.module_name.as_str().as_arg(),
+                self.module_id.as_str().as_arg(),
                 obj_lit(Some(export_props)).as_arg(),
             ];
             args.extend(export_all_props);
@@ -229,7 +229,7 @@ impl VisitMut for GlobalModuleTransformer {
         if esm_collector.exports.is_empty() {
             module.visit_mut_with(&mut CommonJsTransformer::new(
                 &self.resolver,
-                self.module_name.clone(),
+                self.module_id.clone(),
                 self.runtime_module,
             ));
         }
@@ -237,13 +237,13 @@ impl VisitMut for GlobalModuleTransformer {
 }
 
 pub fn global_module(
-    module_name: String,
+    module_id: String,
     runtime_module: bool,
     external_pattern: Option<String>,
     import_paths: Option<HashMap<String, String>>,
 ) -> impl VisitMut + Fold {
     as_folder(GlobalModuleTransformer::new(
-        module_name,
+        module_id,
         runtime_module,
         external_pattern,
         import_paths,

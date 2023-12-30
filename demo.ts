@@ -56,7 +56,7 @@ const transformWithPlugin = async (code: string) => {
       experimental: {
         plugins: [
           ['.', {
-            commonjs: true,
+            moduleId: (123).toString(),
             runtimeModule: true,
             externalPattern: '^(@app/secret)',
             importPaths: {
