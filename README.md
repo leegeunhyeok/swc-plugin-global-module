@@ -101,6 +101,52 @@ const pluginOptions = {
 
 ```tsx
 // ESM
+import React, { useState, useEffect } from 'react';
+import { Container } from '@app/components';
+import { useCustomHook } from '@app/hooks';
+import { SECRET_KEY } from '@app/secret';
+import * as app from '@app/core';
+
+// named export & declaration
+export function MyComponent(): JSX.Element {
+  const [count, setCount] = useState(0);
+  useCustomHook(SECRET_KEY);
+  return <Container>{count}</Container>;
+}
+
+// named export with alias
+export { app as AppCore };
+
+// default export & anonymous declaration
+export default class {}
+
+// re-exports
+export * from '@app/module_a';
+export * from '@app/module_b';
+export * as car from '@app/module_c';
+export { driver as driverModule } from '@app/module_d';
+```
+
+```js
+// CommonJS
+const core = require('@app/core');
+const utils = global.requireWrapper(require('@app/utils'));
+
+if (process.env.NODE_ENV === 'production') {
+  module.exports = class ProductionClass extends core.Core {};
+} else {
+  module.exports = class DevelopmentClass extends core.Core {};
+}
+
+exports.getReact = () => {
+  return require('react');
+};
+```
+
+**After**
+
+```js
+// ESM
 const __app_components = global.__modules.import("@app/components");
 const __app_core = global.__modules.import("@app/core");
 const __app_hooks = global.__modules.import("@app/hooks");
@@ -141,43 +187,9 @@ function MyComponent() {
 }
 class __Class {
 }
-global.__modules.esm("demo.tsx", {
-  MyComponent,
-  AppCore: app,
-  default: __Class,
-  car: __re_export,
-  driverModule: __re_export1
-}, __re_export_all, __re_export_all1);
-```
 
-**After**
-
-```js
-const __app_components = global.__modules.import("@app/components");
-const __app_core = global.__modules.import("@app/core");
-const __app_hooks = global.__modules.import("@app/hooks");
-const __app_module_a = global.__modules.import("@app/module_a");
-const __app_module_b = global.__modules.import("@app/module_b");
-const __app_module_c = global.__modules.import("@app/module_c");
-const __app_module_d = global.__modules.import("@app/module_d");
-const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
-const React = _react.default;
-const useState = _react.useState;
-const Container = __app_components.Container;
-const useCustomHook = __app_hooks.useCustomHook;
-const app = global.__modules.helpers.asWildcard(__app_core);
-const __re_export_all = global.__modules.helpers.asWildcard(__app_module_a);
-const __re_export_all1 = global.__modules.helpers.asWildcard(__app_module_b);
-const __re_export = global.__modules.helpers.asWildcard(__app_module_c);
-const __re_export1 = __app_module_d.driver;
-function MyComponent() {
-  const [count, setCount] = useState(0);
-  useCustomHook(app);
-  return /*#__PURE__*/ React.createElement(Container, null, count);
-}
-class __Class {
-}
-global.__modules.esm("demo.tsx", {
+// `moduleId`
+global.__modules.esm("123", {
   MyComponent,
   AppCore: app,
   default: __Class,
@@ -187,18 +199,19 @@ global.__modules.esm("demo.tsx", {
 ```
 
 ```js
-const __cjs = global.__modules.cjs("demo.tsx");
+// CommonJS
+const __cjs = global.__modules.cjs("123");
 const core = global.__modules.require("@app/core");
 const utils = global.requireWrapper(global.__modules.require("@app/utils"));
 if (process.env.NODE_ENV === 'production') {
   module.exports = __cjs.exports.default = class ProductionClass extends core.Core {
-  };
+    };
 } else {
   module.exports = __cjs.exports.default = class DevelopmentClass extends core.Core {
-  };
+    };
 }
 exports.getReact = __cjs.exports.getReact = ()=>{
-  return global.__modules.require("react");
+  return global.__modules.require("node_modules/react/cjs/react.development.js");
 };
 ```
 
