@@ -63,14 +63,14 @@ await transform(code, {
            */
           externalPattern: '^(react|react-native)',
           /**
-           * Actual module path aliases (resolved module path)
+           * Actual module ids.
            *
            * Defaults to none.
            */
-          importPaths: {
-            "<import source>": "actual module path",
+          moduleIds: {
+            "<import source>": "actual module id",
             // eg. react
-            "react": "node_modules/react/cjs/react.development.js",
+            "react": "react-module-id",
           },
         }],
       ],

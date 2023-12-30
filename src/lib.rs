@@ -16,7 +16,7 @@ struct GlobalModuleOptions {
     module_id: Option<String>,
     runtime_module: Option<bool>,
     external_pattern: Option<String>,
-    import_paths: Option<HashMap<String, String>>,
+    module_ids: Option<HashMap<String, String>>,
 }
 
 #[plugin_transform]
@@ -36,6 +36,6 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
         ),
         config.runtime_module.unwrap_or(false),
         config.external_pattern,
-        config.import_paths,
+        config.module_ids,
     ))
 }

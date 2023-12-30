@@ -17,10 +17,10 @@ fn fixture(input: PathBuf) {
         None
     };
 
-    let import_paths = if filename.contains("import_paths") {
+    let module_ids = if filename.contains("module_ids") {
         Some(HashMap::from([(
             String::from("react"),
-            String::from("node_modules/react/cjs/react.development.js"),
+            String::from("12345"),
         )]))
     } else {
         None
@@ -36,7 +36,7 @@ fn fixture(input: PathBuf) {
                 String::from("test.js"),
                 runtime,
                 external.to_owned(),
-                import_paths.to_owned(),
+                module_ids.to_owned(),
             )
         },
         &input,

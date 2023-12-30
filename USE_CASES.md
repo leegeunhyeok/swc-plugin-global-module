@@ -89,7 +89,7 @@ watcher.addEventListener(async ({ path }) => {
         plugins: [
           ['swc-plugin-global-module', {
             runtimeModule: true,
-            importPaths: getImportPathsFromMetafile(strippedPath),
+            moduleIds: getImportPathsFromMetafile(strippedPath),
           }],
         ],
       },

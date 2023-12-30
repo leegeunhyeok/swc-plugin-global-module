@@ -35,13 +35,13 @@ impl GlobalModuleTransformer {
         module_id: String,
         runtime_module: bool,
         external_pattern: Option<String>,
-        import_paths: Option<HashMap<String, String>>,
+        module_ids: Option<HashMap<String, String>>,
     ) -> Self {
         GlobalModuleTransformer {
             module_id,
             runtime_module,
             external_flags: Default::default(),
-            resolver: ModuleResolver::new(external_pattern, import_paths),
+            resolver: ModuleResolver::new(external_pattern, module_ids),
         }
     }
 
@@ -240,12 +240,12 @@ pub fn global_module(
     module_id: String,
     runtime_module: bool,
     external_pattern: Option<String>,
-    import_paths: Option<HashMap<String, String>>,
+    module_ids: Option<HashMap<String, String>>,
 ) -> impl VisitMut + Fold {
     as_folder(GlobalModuleTransformer::new(
         module_id,
         runtime_module,
         external_pattern,
-        import_paths,
+        module_ids,
     ))
 }
