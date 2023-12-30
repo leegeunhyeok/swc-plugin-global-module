@@ -32,7 +32,7 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
         config.module_id.unwrap_or(
             metadata
                 .get_context(&TransformPluginMetadataContextKind::Filename)
-                .unwrap()
+                .unwrap(),
         ),
         config.runtime_module.unwrap_or(false),
         config.external_pattern,
