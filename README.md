@@ -91,8 +91,8 @@ const pluginOptions = {
   moduleId: (123).toString(),
   runtimeModule: true,
   externalPattern: '^(@app/secret)',
-  importPaths: {
-    react: 'node_modules/react/cjs/react.development.js',
+  moduleIds: {
+    react: '12345',
   },
 }
 ```
@@ -167,9 +167,9 @@ const __app_module_d = global.__modules.import("@app/module_d");
 const __app_secret = global.__modules.external("@app/secret");
 
 /**
- * `react` replaced due to `importPaths` option.
+ * `react` replaced due to `moduleIds` option.
  */
-const _react = global.__modules.import("node_modules/react/cjs/react.development.js");
+const _react = global.__modules.import("12345");
 const React = _react.default;
 const useState = _react.useState;
 const Container = __app_components.Container;
@@ -211,7 +211,7 @@ if (process.env.NODE_ENV === 'production') {
     };
 }
 exports.getReact = __cjs.exports.getReact = ()=>{
-  return global.__modules.require("node_modules/react/cjs/react.development.js");
+  return global.__modules.require("12345");
 };
 ```
 
