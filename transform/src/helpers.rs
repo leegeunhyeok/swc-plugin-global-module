@@ -118,6 +118,7 @@ pub fn create_default_import_stmt(
             src: Str::from(module_src.clone()).into(),
             type_only: false,
             with: None,
+            phase: ImportPhase::Evaluation,
         }))
     }
 }
@@ -156,6 +157,7 @@ pub fn create_named_import_stmt(
             src: Str::from(module_src.clone()).into(),
             type_only: false,
             with: None,
+            phase: ImportPhase::Evaluation,
         })
         .into()
     }
@@ -193,6 +195,7 @@ pub fn create_namespace_import_stmt(
             src: Str::from(module_src.clone()).into(),
             type_only: false,
             with: None,
+            phase: ImportPhase::Evaluation,
             specifiers: vec![ImportStarAsSpecifier {
                 span: DUMMY_SP,
                 local: ident.clone(),

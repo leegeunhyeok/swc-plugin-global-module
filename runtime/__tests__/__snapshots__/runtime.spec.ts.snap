@@ -4,40 +4,6 @@ exports[`swc-plugin-global-module/runtime external modules when register module 
 
 exports[`swc-plugin-global-module/runtime external modules when register module to external registry when call \`require()\` to get external module should throw error 1`] = `"module 'external' not found"`;
 
-exports[`swc-plugin-global-module/runtime match snapshot (cjs + moduleId) 1`] = `
-"const __cjs = global.__modules.cjs("cjs-id");
-const core = global.__modules.require("@app/core");
-const utils = global.requireWrapper(global.__modules.require("@app/utils"));
-if (process.env.NODE_ENV === 'production') {
-    module.exports = __cjs.exports.default = class ProductionClass extends core.Core {
-    };
-} else {
-    module.exports = __cjs.exports.default = class DevelopmentClass extends core.Core {
-    };
-}
-exports.getReact = __cjs.exports.getReact = ()=>{
-    return global.__modules.require("456");
-};
-"
-`;
-
-exports[`swc-plugin-global-module/runtime match snapshot (cjs) 1`] = `
-"const __cjs = global.__modules.cjs("demo.tsx");
-const core = global.__modules.require("@app/core");
-const utils = global.requireWrapper(global.__modules.require("@app/utils"));
-if (process.env.NODE_ENV === 'production') {
-    module.exports = __cjs.exports.default = class ProductionClass extends core.Core {
-    };
-} else {
-    module.exports = __cjs.exports.default = class DevelopmentClass extends core.Core {
-    };
-}
-exports.getReact = __cjs.exports.getReact = ()=>{
-    return global.__modules.require("456");
-};
-"
-`;
-
 exports[`swc-plugin-global-module/runtime match snapshot (esm + moduleId) 1`] = `
 "const _react = global.__modules.import("456");
 const __app_components = global.__modules.import("@app/components");

@@ -88,7 +88,6 @@ impl VisitMut for CommonJsTransformer<'_> {
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        expr.visit_mut_children_with(self);
         match expr {
             // Requires
             // `require('...')`
@@ -124,49 +123,47 @@ impl VisitMut for CommonJsTransformer<'_> {
             // `exports.bar = baz`
             Expr::Assign(AssignExpr {
                 op: AssignOp::Assign,
-                left: left_pat_or_expr,
-                right: right_expr,
+                left,
+                right,
                 ..
-            }) => {
-                if let Some(left_expr) = left_pat_or_expr.as_expr() {
-                    match left_expr {
-                        Expr::Member(MemberExpr {
-                            obj,
-                            prop: MemberProp::Ident(prop_ident),
-                            ..
-                        }) => {
-                            let export_name = if obj.is_ident_ref_to("exports") {
-                                prop_ident.sym.as_str()
-                            } else if obj.is_ident_ref_to("module") && prop_ident.sym == "exports" {
-                                "default"
-                            } else {
-                                return;
-                            };
-
-                            self.exported += 1;
-                            *expr = right_expr
-                                .clone()
-                                .make_assign_to(
-                                    AssignOp::Assign,
-                                    obj_member_expr(
-                                        obj_member_expr(
-                                            Expr::Ident(self.cjs_boundary_ident.clone()),
-                                            quote_ident!("exports"),
-                                        ),
-                                        quote_ident!(export_name),
-                                    )
-                                    .as_pat_or_expr(),
-                                )
-                                .make_assign_to(
-                                    AssignOp::Assign,
-                                    left_expr.clone().as_pat_or_expr(),
-                                );
-                        }
-                        _ => {}
+            }) => match left {
+                AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
+                    obj,
+                    prop: MemberProp::Ident(prop_ident),
+                    ..
+                })) => {
+                    let export_name = if obj.is_ident_ref_to("exports") {
+                        prop_ident.sym.as_str()
+                    } else if obj.is_ident_ref_to("module") && prop_ident.sym == "exports" {
+                        "default"
+                    } else {
+                        return;
                     };
+
+                    self.exported += 1;
+
+                    *expr = right
+                        .clone()
+                        .make_assign_to(
+                            AssignOp::Assign,
+                            AssignTarget::Simple(SimpleAssignTarget::Member(
+                                obj_member_expr(
+                                    obj_member_expr(
+                                        Expr::Ident(self.cjs_boundary_ident.clone()),
+                                        quote_ident!("exports"),
+                                    ),
+                                    quote_ident!(export_name),
+                                )
+                                .as_member()
+                                .unwrap()
+                                .clone(),
+                            )),
+                        )
+                        .make_assign_to(AssignOp::Assign, left.clone());
                 }
-            }
-            _ => {}
+                _ => {}
+            },
+            _ => expr.visit_mut_children_with(self),
         }
     }
 }

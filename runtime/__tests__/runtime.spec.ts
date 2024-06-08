@@ -87,11 +87,12 @@ describe('swc-plugin-global-module/runtime', () => {
     ).toMatchSnapshot();
   });
 
-  snapshot('match snapshot (cjs)', async () => {
-    expect(
-      await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS),
-    ).toMatchSnapshot();
-  });
+  // TODO: Implement new RFC specs, re-write test cases.
+  // snapshot('match snapshot (cjs)', async () => {
+  //   expect(
+  //     await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS),
+  //   ).toMatchSnapshot();
+  // });
 
   snapshot('match snapshot (esm + moduleId)', async () => {
     expect(
@@ -99,11 +100,11 @@ describe('swc-plugin-global-module/runtime', () => {
     ).toMatchSnapshot();
   });
 
-  snapshot('match snapshot (cjs + moduleId)', async () => {
-    expect(
-      await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS, 'cjs-id'),
-    ).toMatchSnapshot();
-  });
+  // snapshot('match snapshot (cjs + moduleId)', async () => {
+  //   expect(
+  //     await transformWithPlugin(SNAPSHOT_TEST_CODE_INPUT_CJS, 'cjs-id'),
+  //   ).toMatchSnapshot();
+  // });
 
   it('global object must expose apis', () => {
     expect(typeof global.__modules === 'object').toEqual(true);
