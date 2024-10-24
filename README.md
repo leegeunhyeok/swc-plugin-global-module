@@ -1,3 +1,8 @@
+> [!WARNING]
+> No longer maintenance. Instead, check out this project:
+> 
+> https://github.com/leegeunhyeok/global-modules
+
 # swc-plugin-global-module
 
 > [!WARNING]
